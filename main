@@ -1,0 +1,61 @@
+                 ;Author:Khaled Mohamad
+;Date:
+;comment  
+;---------------------------   
+
+PrintStr MACRO Str
+        
+        mov ah,9
+        mov dx, offset str
+        int 21h
+              
+PrintStr ENDM  
+
+ReadStr MACRO Read
+        
+        mov ah,0Ah
+        mov dx, offset Read
+        int 21h
+            
+ReadStr ENDM 
+
+deci MACRO                      
+            push cx
+            xor ah, ah 
+            mov cl, 10 
+            div cl 
+            add ax, 3030h
+            pop cx 
+deci ENDM 
+
+        .MODEL SMALL
+        .STACK 64
+        .DATA
+   mes1 db 'Enter the first number:$'
+   mes2 db 10,13,'Enter the second number:$'
+   Entr db 10,13
+   in1  db 3,?,3 dup('$')
+   in2  db 3,?,3 dup('$') 
+   SSS  db '?-?=  ','$'
+        .code
+MAIN    PROC FAR               
+        MOV AX,@DATA
+        MOV DS,AX 
+       
+        PrintStr mes1
+        ReadStr in1
+        
+        PrintStr mes2
+        ReadStr in2
+        
+        mov cl,in1[2]
+        mov SSS[0],cl
+        mov ch,in2[2]   
+        mov SSS[2],ch
+        
+        PrintStr Entr        
+        PrintStr SSS                       
+        
+        hlt
+MAIN    ENDP
+        END MAIN
