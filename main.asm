@@ -51,10 +51,10 @@ MAIN    PROC
    int 10h 
    
    
-   Print RBTop,70,0c0h   
-   Print RBCenterU,70,0c0h     
-   Print RBCenterD,70,0c0h  
-   Print RBBottom,70,0c0h 
+   Print RBTop,70,20h   
+   Print RBCenterU,70,20h     
+   Print RBCenterD,70,20h  
+   Print RBBottom,70,20h 
    
    
    activeLoop:
@@ -88,7 +88,7 @@ RightUp PROC
     cmp RBTop,0
       jz ENDRU
     DEC RBTop
-    Print RBTop,70,0c0h
+    Print RBTop,70,20h
     Delete RBBottom,70
     DEC RBCenterU
     DEC RBCenterD
@@ -100,7 +100,7 @@ RightDown PROC
     cmp RBBottom,14
       jz ENDRD
     INC RBBottom
-    Print RBBottom,70,0c0h
+    Print RBBottom,70,20h
     Delete RBTop,70
     INC RBCenterD
     INC RBCenterU
