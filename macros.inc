@@ -220,24 +220,20 @@ mov cx, 0
 mov dx, 0
 
 ;Draw last one fifth section
-mov ah, 2   
-mov dl, 0 ;Move to position X=0
-mov dh, 15 ;Move to position Y=20
-int 10h
-
+    
     ;Draw Horizontal Line
-    mov cl, 0
-    mov ah, 2
-    mov dl, '-' 
-    mov dh, 0
+    
     loop3:
-        int 21h      
+        push cx
+        Print 15, cl, Hr_Line_Color      
+        pop cx      
         inc cl
         cmp cl, 80
     jnz loop3
     
     ;Move to the next line
-          
+    
+    mov ah, 2      
     mov dl, 0 ;Move to position X=0
     mov dh, 16 ;Move to position Y=21
     int 10h 
@@ -273,13 +269,12 @@ int 10h
     mov dl, bl
     int 21h
     
-            
-    
-    mov dl, 9
-    int 21h
-    
-    mov dl, 9
-    int 21h
+    ;Move to write player 2 info
+    mov ah, 2      
+    mov dh, 16 ;Move to position Y=16 
+    mov dl, 78 
+    sub dl, p1_name[1]
+    int 10h
     
     ;Player 2 Info
    
@@ -307,18 +302,14 @@ int 10h
     mov dl, bl
     int 21h  
     
-    ;Move to the next line
-    mov dl, 0 ;Move to position X=0
-    mov dh, 17 ;Move to position Y=22
-    int 10h
-    
+        
     ;Draw Horizontal Line
-    mov cl, 0
-    mov ah, 2 
-    mov dh, 0
-    mov dl, '-'
-    loop6:
-        int 21h      
+    mov cx, 0
+    
+    loop6:               
+        push cx
+        Print 17, cl, Hr_Line_Color      
+        pop cx
         inc cl
         cmp cl, 80
     jnz loop6
@@ -330,4 +321,3 @@ int 10h
     pop ax
 
     ENDM WriteOneFifthScreen
-
