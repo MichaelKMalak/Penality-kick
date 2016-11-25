@@ -12,8 +12,8 @@
    
    
 start:
-	mov ax,@data	
-	mov ds,ax              
+   mov ax,@data	
+   mov ds,ax              
       
   
    mov Ah,03h
@@ -50,17 +50,15 @@ start:
 ret    
 
 Move PROC
-    
-
-    RightU:
+   RightU:
     CMP Ah,48h
-      JNZ RightD    
-      Call RightUp
-    RightD:    
+    JNZ RightD    
+    Call RightUp
+   RightD:    
     CMP Ah,50h
-      JNZ ENDD       
-      CALL RightDown
-    ENDD:ret
+    JNZ ENDD       
+    CALL RightDown
+   ENDD:ret
 Move ENDP    
 
 RightUp PROC
