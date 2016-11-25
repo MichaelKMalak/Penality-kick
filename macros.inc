@@ -9,7 +9,7 @@ Print MACRO row, column, color
    mov Bl, color
    mov Cx, 1h
    INT 10h 
-Print endm 
+ENDM Print 
 
 PrintChar MACRO row, column, char
    mov Ah, 02h
@@ -23,7 +23,7 @@ PrintChar MACRO row, column, char
    mov ah, 09h
    mov Cx, 1h
    int 10h      
-PrintChar endm
+ENDM PrintChar
 
 Delete Macro row, column
    mov Ah, 02h
@@ -36,7 +36,7 @@ Delete Macro row, column
    mov Bl, 0h
    mov Cx, 1h
    int 10h 
-Delete ENDM
+ENDM Delete
 
 
 GetNames    MACRO  
@@ -155,76 +155,50 @@ DrawInterface   MACRO
     continue1:
     
     ;Draw the goal
-    mov al, 0
-    mov ah, 2
-    mov dl, GoalDim[0] ;Move to position X=70
-    mov dh, GoalDim[1] ;Move to position Y=8
-    int 10h
-        ;Draw Two - indicating the goal beginning
+    
+        ;Draw colored spaces indicating the goal beginning
         
-        mov cl, GoalDim[2]
-        sub cl, GoalDim[0] ;Number of dashes
+        mov cl, GoalDim[0]
+        
         
         loop0:
-        mov dh, 0
-        mov ah, 2
-        mov dl, '_'
-        int 21h
-        
-        dec cl
-        and cl, cl
+        push cx
+        Print GoalDim[1], cl, 0c0h
+        pop cx
+                
+        inc cl  
+        mov bl, GoalDim[2]
+        inc bl
+        cmp cl, bl 
         jnz loop0 
         
         
         ;Draw the back of the goal (|)
-        mov cl, GoalDim[1] ;Move intial position to Y=6
+        mov cl, GoalDim[1]
         inc cl 
         loop1:
-               
-            mov ax, 0
-            mov dx, 0
-               
-            mov ah, 2
-            mov dh, cl ;Move to position Y=8
-            mov dl, GoalDim[2] ;Move to position X=70
-            int 10h 
-            
-            mov dh, 0
-            mov ah, 2
-            mov dl, '|'
-            int 21h  
+            push cx   
+            Print cl, GoalDim[2], 0c0h   
+            pop cx
             inc cl
             cmp cl, GoalDim[3]
         jnz loop1
         
         
-        mov al, 0
-        mov ah, 2
-        mov dl, GoalDim[0] ;Move to position X=70
-        mov dh, GoalDim[3] ;Move to position Y=8 
-        dec dh
-        int 10h
-        
-        ;Draw dashes indicating the goal ending
+        ;Draw colored spaces indicating the goal ending
         mov cl, GoalDim[2]
-        sub cl, GoalDim[0] ;Number of dashes
         
         loop2:
-        mov al, 0
-        mov dh, 0
-        mov ah, 2
-        mov dl, '_'
-        int 21h
+        push cx
+        Print GoalDim[3], cl, 0c0h
+        pop cx
          
         dec cl
-        and cl,cl
+        mov bl, GoalDim[0]
+        dec bl
+        cmp cl, bl        
         jnz loop2 
         
-        mov dh, 0
-        mov ah, 2               
-        mov dl, '|'
-        int 21h
-    
     pop ds
     pop dx
     pop cx
@@ -355,6 +329,5 @@ int 10h
     pop bx
     pop ax
 
-    ENDM WriteOneFifthSc
-
+    ENDM WriteOneFifthScreen
 
