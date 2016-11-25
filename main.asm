@@ -37,16 +37,16 @@ start:
    Print [RBBottom],70,0c0h 
    
    
-   circle:
+   activeLoop:
    
     mov ah, 01h
     int 16h         ;ZF=1 no charachter in buffer
-    jz circle
+    jz activeLoop
         mov Ah,00
         int 16h     ;waits for buffer till it's not empty
         CALL Move            
 
-   JMP circle 
+   JMP activeLoop
 ret    
 
 Move PROC
