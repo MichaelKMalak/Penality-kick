@@ -1,19 +1,44 @@
  include macros.inc
 
- org 100h
-   
-   jmp start
-   
-   RBTop       equ 0905h
-   RBCenterU   equ 0906h
-   RBCenter    equ 0907h
-   RBCenterD   equ 0908h
-   RBBottom    equ 0909h
-   
-   
-start:
-   mov ax,@data	
-   mov ds,ax              
+.MODEL SMALL
+.STACK 64    
+.DATA 
+ 
+ RBTop       db 6
+ RBCenterU   db 7
+ RBCenterD   db 8
+ RBBottom    db 9
+               
+ ask_p1_name db 'Player 1 Name: ','$'
+ ask_p2_name db 'Player 2 Name: ','$'
+ score_msg db "'s score:$"
+ p1_name db 30, ?, 30 dup('$')
+ p2_name db 30, ?, 30 dup('$')
+  
+ p1_score db 0  ;Intially player 1 score is 0
+ p2_score db 0  ;Intially player 2 score is 0
+ 
+ GoalDim db 70, 3, 73, 11 ;X1,Y1, X2,Y2
+ current_player db 1  
+ 
+.CODE   
+MAIN    PROC   
+    
+    mov ax, @DATA
+    mov ds, ax
+    mov ax, 0
+    
+    mov ah, 0
+    mov al, 3
+    int 10h 
+    
+    GetNames
+    
+    mov current_player, 2 ;Set player to player 2
+        
+    DrawInterface
+    
+    WriteOneFifthScreen              
       
   
    mov Ah,03h
@@ -24,17 +49,12 @@ start:
    mov ah,1
    mov cx,2b0bh
    int 10h 
-        
-        
-   mov [RBTop],10
-   mov [RBCenterU],11 
-   mov [RBCenterD],12
-   mov [RBBottom],13  
    
-   Print [RBTop],70,0c0h   
-   Print [RBCenterU],70,0c0h     
-   Print [RBCenterD],70,0c0h  
-   Print [RBBottom],70,0c0h 
+   
+   Print RBTop,70,0c0h   
+   Print RBCenterU,70,0c0h     
+   Print RBCenterD,70,0c0h  
+   Print RBBottom,70,0c0h 
    
    
    activeLoop:
@@ -47,7 +67,10 @@ start:
         CALL Move            
 
    JMP activeLoop
-ret    
+
+   mov ah, 4ch
+   int 21h
+MAIN        ENDP    
 
 Move PROC
    RightU:
@@ -62,31 +85,26 @@ Move PROC
 Move ENDP    
 
 RightUp PROC
-    cmp [RBTop],0
+    cmp RBTop,0
       jz ENDRU
-    DEC [RBTop]
-    Print [RBTop],70,0c0h
-    Delete [RBBottom],70
-    DEC [RBCenterU]
-    DEC [RBCenterD]
-    DEC [RBBottom]
+    DEC RBTop
+    Print RBTop,70,0c0h
+    Delete RBBottom,70
+    DEC RBCenterU
+    DEC RBCenterD
+    DEC RBBottom
     ENDRU:ret
 RightUp ENDP
 
 RightDown PROC
-    cmp [RBBottom],18
+    cmp RBBottom,14
       jz ENDRD
-    INC [RBBottom]
-    Print [RBBottom],70,0c0h
-    Delete [RBTop],70
-    INC [RBCenterD]
-    INC [RBCenterU]
-    INC [RBTop]
+    INC RBBottom
+    Print RBBottom,70,0c0h
+    Delete RBTop,70
+    INC RBCenterD
+    INC RBCenterU
+    INC RBTop
     ENDRD:ret
 RightDown ENDP
-                       	
-  
-  
-
-  
-	
+END MAIN 
