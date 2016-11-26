@@ -21,6 +21,7 @@
  GoalDim db 70, 3, 73, 11 ;X1,Y1, X2,Y2
  current_player db 1  
  
+ Hr_Line_Color db 0c0h
 .CODE   
 MAIN    PROC   
     
