@@ -23,7 +23,7 @@
  
  
  
- Coordinate_BallCurve dw  0205h       ,        6     
+ Coordinate_BallCurve dw  0205h , 6     
 
 temp dw ? 
 cx_value dw ?
@@ -61,10 +61,10 @@ MAIN    PROC
    int 10h 
    
    
-   Print RBTop,70,20h   
+   
    Print RBCenterU,70,20h     
    Print RBCenterD,70,20h  
-   Print RBBottom,70,20h 
+ 
    
 ;   DrawCurve_Only
    
@@ -281,26 +281,26 @@ Move PROC
 Move ENDP    
 
 RightUp PROC
-    cmp RBTop,0
+   
+     cmp RBCenterU,0
       jz ENDRU
-    DEC RBTop
-    Print RBTop,70,20h
-    Delete RBBottom,70
-    DEC RBCenterU
+    dec RBCenterU
+    print RBCenterU,70,20h
+    Delete RBCenterD,70 
     DEC RBCenterD
-    DEC RBBottom
+   
     ENDRU:ret
 RightUp ENDP
 
 RightDown PROC
-    cmp RBBottom,14
+    cmp RBCenterD,14
       jz ENDRD
-    INC RBBottom
-    Print RBBottom,70,20h
-    Delete RBTop,70
-    INC RBCenterD
+    
+    inc RBCenterD
+    print RBCenterD,70,20h 
+    Delete RBCenterU,70 
     INC RBCenterU
-    INC RBTop
+   
     ENDRD:ret
 RightDown ENDP
 END MAIN 
