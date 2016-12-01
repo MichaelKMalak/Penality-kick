@@ -9,21 +9,7 @@ Print MACRO row, column, color
    mov Bl, color
    mov Cx, 1h
    INT 10h 
-ENDM Print 
-
-PrintChar MACRO row, column, char
-   mov Ah, 02h
-   mov Bh, 0h
-   mov Dh, row
-   mov Dl, column
-   INT 10h
-   mov Al, char
-   add Al, 30h   
-   mov bl, 0Fh
-   mov ah, 09h
-   mov Cx, 1h
-   int 10h      
-ENDM PrintChar
+ENDM Print
 
 Delete Macro row, column
    mov Ah, 02h
@@ -37,7 +23,6 @@ Delete Macro row, column
    mov Cx, 1h
    int 10h 
 ENDM Delete
-
 
 GetNames    MACRO  
     push ax
@@ -112,7 +97,7 @@ DrawInterface   MACRO
     ;Draw + (Player)
     mov ah, 2
     mov dl, 5 ;Move to position X=5
-    mov dh, 7 ;Move to position Y=10
+    mov dh, 7 ;Move to position Y=7
     int 10h  
     
     mov dh, 0
@@ -220,24 +205,20 @@ mov cx, 0
 mov dx, 0
 
 ;Draw last one fifth section
-mov ah, 2   
-mov dl, 0 ;Move to position X=0
-mov dh, 15 ;Move to position Y=20
-int 10h
-
+    
     ;Draw Horizontal Line
-    mov cl, 0
-    mov ah, 2
-    mov dl, '-' 
-    mov dh, 0
+    
     loop3:
-        int 21h      
+        push cx
+        Print 15, cl, Hr_Line_Color      
+        pop cx      
         inc cl
         cmp cl, 80
     jnz loop3
     
     ;Move to the next line
-          
+    
+    mov ah, 2      
     mov dl, 0 ;Move to position X=0
     mov dh, 16 ;Move to position Y=21
     int 10h 
@@ -273,13 +254,12 @@ int 10h
     mov dl, bl
     int 21h
     
-            
-    
-    mov dl, 9
-    int 21h
-    
-    mov dl, 9
-    int 21h
+    ;Move to write player 2 info
+    mov ah, 2      
+    mov dh, 16 ;Move to position Y=16 
+    mov dl, 78 
+    sub dl, p1_name[1]
+    int 10h
     
     ;Player 2 Info
    
@@ -307,18 +287,14 @@ int 10h
     mov dl, bl
     int 21h  
     
-    ;Move to the next line
-    mov dl, 0 ;Move to position X=0
-    mov dh, 17 ;Move to position Y=22
-    int 10h
-    
+        
     ;Draw Horizontal Line
-    mov cl, 0
-    mov ah, 2 
-    mov dh, 0
-    mov dl, '-'
-    loop6:
-        int 21h      
+    mov cx, 0
+    
+    loop6:               
+        push cx
+        Print 17, cl, Hr_Line_Color      
+        pop cx
         inc cl
         cmp cl, 80
     jnz loop6
@@ -330,4 +306,5 @@ int 10h
     pop ax
 
     ENDM WriteOneFifthScreen
+
 
