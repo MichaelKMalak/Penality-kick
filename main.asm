@@ -1,4 +1,4 @@
- include macros_proj_Penality.inc
+ include macros.inc
 
 .MODEL small
 .STACK 64    
