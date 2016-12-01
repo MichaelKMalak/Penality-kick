@@ -18,9 +18,10 @@
  p1_score db 0  ;Intially player 1 score is 0
  p2_score db 0  ;Intially player 2 score is 0
  
- GoalDim db 70, 3, 73, 11 ;X1,Y1, X2,Y2
- current_player db 1   
+GoalDim db 71, 3, 74, 11 ;X1,Y1, X2,Y2
+ current_player db 1                        
  
+ Hr_Line_Color db 0c0h
  
  
  Coordinate_BallCurve dw  0205h , 6     
