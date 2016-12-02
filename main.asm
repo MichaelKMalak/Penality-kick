@@ -1,6 +1,6 @@
  include macros.inc
 
-.MODEL small
+.MODEL SMALL
 .STACK 64    
 .DATA 
  
@@ -12,24 +12,23 @@
  ask_p1_name db 'Player 1 Name: ','$'
  ask_p2_name db 'Player 2 Name: ','$'
  score_msg db "'s score:$"
- p1_name db 30, ?, 30 dup('$')
- p2_name db 30, ?, 30 dup('$')
+ p1_name db 30, ?,  30 dup('$')
+ p2_name db 30, ?,  30 dup('$')
   
  p1_score db 0  ;Intially player 1 score is 0
  p2_score db 0  ;Intially player 2 score is 0
  
-GoalDim db 71, 3, 74, 11 ;X1,Y1, X2,Y2
+ GoalDim db 71, 3, 74, 11 ;X1,Y1, X2,Y2
  current_player db 1                        
  
  Hr_Line_Color db 0c0h
- 
+ Goal_Color db 0c0h
+ Goalkeeper_Color db 20h
  
  Coordinate_BallCurve dw  0205h , 6     
 
-temp dw ? 
-cx_value dw ?
-Shoot_Key  db  1Ch; Enter scan code
-
+ temp dw ? 
+ Shoot_Key  db  1Ch; Enter scan code
  
 .CODE   
 MAIN    PROC   
@@ -37,242 +36,248 @@ MAIN    PROC
     mov ax, @DATA
     mov ds, ax
     mov ax, 0
-    
-    mov ah, 0
-    mov al, 3
-    int 10h 
-    
+     
+         
     CALL GetNames
     
     mov current_player, 2 ;Set player to player 2
         
-    CALL DrawInterface
+    CALL DrawInterface   
     
-    CALL WriteOneFifthScreen              
-         
+    CALL WriteOneFifthScreen
+    
+    mov Ah,03h
+    int 10h    
+    mov Bh, 00
+    mov Cx, 01  
+
+    mov ah,1
+    mov cx,2b0bh
+    int 10h 
+   
+   Print RBCenterU,70,Goalkeeper_Color     
+   Print RBCenterD,70,Goalkeeper_Color 
+   
     
     
-   mov Ah,03h
-   int 10h    
-   mov Bh, 00
-   mov Cx, 01  
-
-   mov ah,1
-   mov cx,2b0bh
-   int 10h 
-   
-   
-   
-   Print RBCenterU,70,20h     
-   Print RBCenterD,70,20h  
- 
-   
-;   DrawCurve_Only
-   
-   ; DrawCurve_Shoot  
     
-;   activeLoop:
-   
-;    mov ah, 01h
- ;   int 16h         ;ZF=1 no charachter in buffer
-  ;  jz activeLoop
-   ;     mov Ah,00
-    ;    int 16h     ;waits for buffer till it's not empty
-     ;   CALL Move            
-
-  ; JMP activeLoop
-; CALL  Active       
-
-
 
 ;Wait for key from keyboard to shoot
-          CHECK:
-          
-                            ; DrawCurve   macro
-                          ;  DrawCurve Macro    
-                        ;Get Curve co
-                       ; mov bx,Coordinate_BallCurve[0] ;start      
-                       mov bl,0 
-                       mov cx,Coordinate_BallCurve[2] ; radius
-                        FirstHalfCycle:  
-                                          
-                                           
-                                           
-                                           mov ah,2
-                                           mov dx, Coordinate_BallCurve[0]
-                                           add dl,bl                ;inc X Coordinate --> right  
-                                           ; add dl,bl                ;inc X Coordinate --> right
-                                           ;inc dl
-                                           add dh,bl                ;inc Y Coordinate --> down
-                                           int 10h      
-                                          push dx
-                                           
-                                           ;Draw 'o'
-                                           mov ah,2
-                                           mov dl,'o'
-                                           int 21h  
-                                                pop dx
-                                                 mov si,dx    
-                                            ;To clear the last 'o'       
-                                            mov ah,2
-                                             mov dx,si
-                                             int 10h      
-                                          ;  ;Draw space
-                                            mov ah,2
-                                           mov dl,' '
-                                           int 21h  
-                                           
-                                           
-                                           
-                                            
-                                           inc bl   
-                                             
-                                         
-                                               MOV AH,1              ;Get key pressed
-                                                INT 16H  
-                                           JNZ Key_Pressed1
-                                           JMP NO_Key_Pressed1               
-                                            Key_Pressed1:   
-                                                     MOV AH,0             ;clear used scan code from buffer
-                                                INT 16H  
-                                                cmp ah,Shoot_Key   
-                                                JZ Shoot     
-                                                pusha
-                                                mov cx_value,cx   
-                                               Call Move 
-                                               mov cx ,cx_value 
-                                               popa
-                                           NO_Key_Pressed1:    
-                                                  
-                        loop FirstHalfCycle
-                        
-                       ; mov bl,0  
-                        mov bl,1
-                         mov cx,Coordinate_BallCurve[2] ; radius 
-                         dec cx 
-                         mov temp,si               
-                         SecondHalfCycle:   
-                                           mov ah,2
-                                              mov dx, temp
-                                           sub dl,bl         ;dec X Coordinate -->left
-                                          ; dec dl
-                                           add dh,bl         ;inc Y Coordinate -->down
-                                           int 10h    
-                                          push dx
-                                           ;Draw 'o'
-                                           mov ah,2
-                                           mov dl,'o'
-                                           int 21h  
-                                            pop dx
-                                             mov si,dx
-                                           
-                                           ; To clear the last 'o'       
-                                             mov ah,2
-                                            mov dx,si
-                                             int 10h      
-                                            ;Draw space
-                                            mov ah,2
-                                           mov dl,' '
-                                           int 21h  
-                                                
-                                           inc bl     
-                                           
-                                             
-                                               MOV AH,1              ;Get key pressed
-                                                INT 16H  
-                                           JNZ Key_Pressed2
-                                           JMP NO_Key_Pressed2               
-                                            Key_Pressed2:   
-                                                     MOV AH,0             ;clear used scan code from buffer
-                                                INT 16H  
-                                                cmp ah,Shoot_Key   
-                                                JZ Shoot     
-                                                pusha
-                                               mov cx_value,cx   
-                                               Call Move 
-                                               mov cx ,cx_value 
-                                               popa
-                                           NO_Key_Pressed2:    
-                                             
-                        loop SecondHalfCycle
-                              
-                        
-                       ; ENDM DrawCurve           
-                       cmp ah,Shoot_Key 
-               
-           JNZ CHECK   
-           
-           
-           ;si contains co-ordinate of start of shooting line
-           Shoot:    
-          
-                
-                                                       
-                  mov cx,12 ;Horizontal shoot  
-                  mov bl,1   
-                  mov temp,si
-                  Horizontal:  
-                           
-                                               MOV AH,1              ;Get key pressed
-                                                INT 16H  
-                                           JNZ Key_Pressed3
-                                           JMP NO_Key_Pressed3               
-                                            Key_Pressed3:   
-                                                     MOV AH,0             ;clear used scan code from buffer
-                                                INT 16H      
-                                                pusha
-                                               mov cx_value,cx   
-                                               Call Move 
-                                               mov cx ,cx_value 
-                                               popa
-                                           
-                            
-                       NO_Key_Pressed3:
-                             mov ah,2
-                             mov dx,temp
-                             add dl,bl     ;inc X horizonatally -->right
-                             int 10h   
-                            push dx
-                             ;Draw
-                             mov ah,2                                                                                  
-                             mov dl,'o'
-                             int 21h
-                                 pop dx
-                                  mov si,dx
-                             
-                               ;To clear the last 'o'       
-                                             mov ah,2
-                                             mov dx,si
-                                             int 10h      
-                                            ;Draw space
-                                            mov ah,2
-                                           mov dl,' '
-                                           int 21h  
-                             
-                             add bl ,6    
-                             
-                             
-                                       
-                                         
-                  Loop Horizontal             
-
-
-
-
-
-;   mov ah, 4ch
- ;  int 21h      
- hlt
-MAIN        ENDP    
- 
+    
+ CHECK:
+;Get Curve co
+        mov bl,0 
+        mov cx,Coordinate_BallCurve[2] ; radius
+        
+    FirstHalfCycle:  
+                      
+       mov ah,2
+       mov dx, Coordinate_BallCurve[0]
+       add dl,bl                ;inc X Coordinate --> right  
        
+       add dh,bl                ;inc Y Coordinate --> down
+       int 10h      
+       push dx
+       
+       ;Draw 'o'
+       mov ah,2
+       mov dl,'o'
+       int 21h  
+       
+       Call Delay
+       
+       pop dx
+       mov si,dx    
+       ;To clear the last 'o'       
+       mov ah,2
+       mov dx,si
+       int 10h      
+       ;Draw space
+       mov ah,2
+       mov dl,' '
+       int 21h  
+       
+       inc bl
+         
+       MOV AH,1              ;Get key pressed
+       INT 16H  
+   
+       JNZ Key_Pressed1
+       JMP NO_Key_Pressed1 
+       
+CHECK_1:
+JMP CHECK       
+                     
+    Key_Pressed1:   
+       MOV AH,0             ;clear used scan code from buffer
+       INT 16H  
+   
+       cmp ah,Shoot_Key   
+       JZ Shoot     
+   
+       push ax
+       push bx
+       push cx
+       push dx
+         
+       Call Move 
+        
+       pop dx
+       pop cx
+       pop bx
+       pop ax
+       
+    NO_Key_Pressed1:    
+                          
+    loop FirstHalfCycle
+
   
-  
-  
+       mov bl,1
+       mov cx,Coordinate_BallCurve[2] ; radius 
+       dec cx 
+       mov temp,si               
+    
+    SecondHalfCycle:   
+       mov ah,2
+       mov dx, temp
+       sub dl,bl         ;dec X Coordinate -->left
+       dec dl
+       add dh,bl         ;inc Y Coordinate -->down
+       int 10h    
+       
+       push dx
+       
+       ;Draw 'o'
+       mov ah,2
+       mov dl,'o'
+       int 21h  
+       
+       Call Delay
+       
+       pop dx
+       mov si,dx
+       
+       ;To clear the last 'o'       
+        mov ah,2
+        mov dx,si
+        int 10h      
+        
+        ;Draw space
+        mov ah,2
+        mov dl,' '
+        int 21h  
+            
+        inc bl     
+        
+        MOV AH,1              ;Get key pressed
+        INT 16H  
+        
+        JNZ Key_Pressed2
+        JMP NO_Key_Pressed2               
+        
+    Key_Pressed2:   
+        MOV AH,0             ;clear used scan code from buffer
+        INT 16H  
+        cmp ah,Shoot_Key   
+        JZ Shoot     
+        
+        push ax
+        push bx
+        push cx
+        push dx
+           
+        Call Move 
+        
+        pop dx
+        pop cx
+        pop bx
+        pop ax
+                   
+    NO_Key_Pressed2:    
+                     
+    loop SecondHalfCycle
+                   
+CMP ah,Shoot_Key 
+
+JNZ CHECK_1   
+
+
+;si contains co-ordinate of start of shooting line
+
+Shoot:    
+
+        mov cx,12 ;Horizontal shoot  
+        mov bl,1   
+        mov temp,si
+    Horizontal:  
+           
+        MOV AH,1              ;Get key pressed
+        INT 16H  
+       
+        JNZ Key_Pressed3
+        JMP NO_Key_Pressed3               
+       
+    Key_Pressed3:   
+        MOV AH,0             ;clear used scan code from buffer
+        INT 16H      
+        
+        push ax
+        push bx
+        push cx
+        push dx
+       
+        Call Move 
+       
+        pop dx
+        pop cx
+        pop bx
+        pop ax
+        
+    NO_Key_Pressed3:
+        mov ah,2
+        mov dx,temp
+        add dl,bl     ;inc X horizonatally -->right
+        int 10h   
+        
+        push dx
+        
+        ;Draw
+        mov ah,2                                                                                  
+        mov dl,'o'
+        int 21h
+        
+        Call Delay
+        
+        pop dx
+        
+        mov si,dx    
+        ;To clear the last 'o'       
+        mov ah,2
+        mov dx,si
+        int 10h      
+        
+        ;Draw space
+        mov ah,2
+        mov dl,' '
+        int 21h  
+     
+        add bl ,6    
+             
+                       
+    Loop Horizontal
+
+    
+JMP CHECK_1 ;Remove this line later
+
+    
+   mov ah, 4ch
+   int 21h
+MAIN        ENDP    
+
 Move PROC
    RightU:
     CMP Ah,48h
-    JNZ RightD    
+        JNZ RightD    
     Call RightUp
    RightD:    
     CMP Ah,50h
@@ -286,7 +291,7 @@ RightUp PROC
      cmp RBCenterU,0
       jz ENDRU
     dec RBCenterU
-    print RBCenterU,70,20h
+    print RBCenterU,70,Goalkeeper_Color
     Delete RBCenterD,70 
     DEC RBCenterD
    
@@ -298,7 +303,7 @@ RightDown PROC
       jz ENDRD
     
     inc RBCenterD
-    print RBCenterD,70,20h 
+    print RBCenterD,70,Goalkeeper_Color 
     Delete RBCenterU,70 
     INC RBCenterU
    
@@ -310,7 +315,11 @@ GetNames    PROC
     push bx
     push cx
     push dx
-    push ds
+    push ds 
+    
+    mov ah, 0
+    mov al, 3
+    int 10h
     
     mov ax, 0600h
     mov bh, 07
@@ -430,7 +439,7 @@ DrawInterface   PROC
         
         loop0:
         push cx
-        Print GoalDim[1], cl, 0c0h
+        Print GoalDim[1], cl, Goal_Color
         pop cx
                 
         inc cl  
@@ -445,7 +454,7 @@ DrawInterface   PROC
         inc cl 
         loop1:
             push cx   
-            Print cl, GoalDim[2], 0c0h   
+            Print cl, GoalDim[2], Goal_Color   
             pop cx
             inc cl
             cmp cl, GoalDim[3]
@@ -457,7 +466,7 @@ DrawInterface   PROC
         
         loop2:
         push cx
-        Print GoalDim[3], cl, 0c0h
+        Print GoalDim[3], cl, Goal_Color
         pop cx
          
         dec cl
@@ -590,26 +599,29 @@ mov dx, 0
     
     RET
 
-WriteOneFifthScreen ENDP
+WriteOneFifthScreen ENDP 
 
-DelayHalfSecond  PROC
+Delay  PROC
     
     push ax
     push bx
     push cx
     push dx
-           
-    mov cx, 7h
-    mov dx, 0A120h
+    push ds
+    
+    ;50 ms delay        
+    mov cx, 0
+    mov dx, 0C350h
     mov ah, 86h
     int 15h
     
+    pop ds
     pop dx
     pop cx
     pop bx
     pop ax
     
     RET
-DelayHalfSecond  ENDP
+Delay  ENDP
 
-END MAIN 
+END MAIN                   	
