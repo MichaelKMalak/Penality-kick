@@ -592,4 +592,24 @@ mov dx, 0
 
 WriteOneFifthScreen ENDP
 
+DelayHalfSecond  PROC
+    
+    push ax
+    push bx
+    push cx
+    push dx
+           
+    mov cx, 7h
+    mov dx, 0A120h
+    mov ah, 86h
+    int 15h
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    
+    RET
+DelayHalfSecond  ENDP
+
 END MAIN 
