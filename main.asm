@@ -24,6 +24,8 @@
  Hr_Line_Color db 0c0h
  Goal_Color db 0c0h
  Goalkeeper_Color db 20h
+ Player_Color db 02h
+ Ball_Color db 0ch
  
  Coordinate_BallCurve dw  0205h , 6     
 
@@ -59,9 +61,6 @@ MAIN    PROC
    Print RBCenterD,70,Goalkeeper_Color 
    
     
-    
-    
-
 ;Wait for key from keyboard to shoot
     
  CHECK:
@@ -80,10 +79,8 @@ MAIN    PROC
        push dx
        
        ;Draw 'o'
-       mov ah,2
-       mov dl,'o'
-       int 21h  
-       
+		Call DrawBall
+		
        Call Delay
        
        pop dx
@@ -148,10 +145,8 @@ JMP CHECK
        push dx
        
        ;Draw 'o'
-       mov ah,2
-       mov dl,'o'
-       int 21h  
-       
+	   Call DrawBall
+		
        Call Delay
        
        pop dx
@@ -241,10 +236,8 @@ Shoot:
         
         push dx
         
-        ;Draw
-        mov ah,2                                                                                  
-        mov dl,'o'
-        int 21h
+        ;Draw '0'
+		Call DrawBall
         
         Call Delay
         
@@ -266,7 +259,7 @@ Shoot:
                        
     Loop Horizontal
 
-    
+   
 JMP CHECK_1 ;Remove this line later
 
     
@@ -391,10 +384,13 @@ DrawInterface   PROC
     mov dh, 7 ;Move to position Y=7
     int 10h  
     
-    mov dh, 0
-    mov ah, 2
-    mov dl, '+'
-    int 21h
+    mov bh, 0
+    mov dx, 0
+	mov al, '+'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
     
     ;Write P1 or P2 under the + sign
     mov al, 0
@@ -403,19 +399,31 @@ DrawInterface   PROC
     mov dh, 8 ;Move to position Y=11
     int 10h 
     
-    mov dh, 0
-    mov ah, 2
-    mov dl, 'P'
-    int 21h
+    mov bh, 0
+    mov dx, 0
+	mov al, 'P'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
                             
     cmp current_player, 1  ;Check if the current player is player1
     jz write_1
     
     ;if player 2 => Print 2
-    mov dh, 0
+	mov al, 0
     mov ah, 2
-    mov dl, '2'
-    int 21h
+    mov dl, 6 ;Move to position X=6
+    mov dh, 8 ;Move to position Y=8
+    int 10h
+	
+    mov bh, 0
+    mov dx, 0
+	mov al, '2'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
     
     mov ax,0
     AND ax,ax
@@ -423,10 +431,19 @@ DrawInterface   PROC
     
     ;if player 1 => Print 1
     write_1:
-    mov dh, 0
+	mov al, 0
     mov ah, 2
-    mov dl, '1'
-    int 21h
+    mov dl, 6 ;Move to position X=6
+    mov dh, 8 ;Move to position Y=8
+    int 10h
+	
+    mov bh, 0
+    mov dx, 0
+	mov al, '1'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
     
     continue1:
     
@@ -550,7 +567,7 @@ mov dx, 0
     mov ah, 2      
     mov dh, 16 ;Move to position Y=16 
     mov dl, 78 
-    sub dl, p1_name[1]
+    sub dl, p2_name[1]
     int 10h
     
     ;Player 2 Info
@@ -610,8 +627,8 @@ Delay  PROC
     push ds
     
     ;50 ms delay        
-    mov cx, 0
-    mov dx, 0C350h
+    mov cx, 1h
+    mov dx, 3880h
     mov ah, 86h
     int 15h
     
@@ -623,5 +640,28 @@ Delay  PROC
     
     RET
 Delay  ENDP
+
+DrawBall PROC
+
+	push ax
+	push bx
+	push cx
+	push dx
+	
+	mov bh, 0
+	mov dx, 0
+	mov al, 'o'
+	mov bl, Ball_Color
+	mov ah, 9
+	mov cx, 1
+	int 10h
+	
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
+	RET
+DrawBall ENDP
 
 END MAIN                   	
