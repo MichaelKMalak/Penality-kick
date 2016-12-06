@@ -47,6 +47,7 @@
  Save db 'The Keeper Saved The Ball','$'
  Outside db 'The Ball is Out !','$'
 
+ GameOver db 0
  
  
 .CODE   
@@ -83,6 +84,8 @@ MAIN    PROC
 ;Wait for key from keyboard to shoot
     
  CHECK: 
+	Call Write_P1_P2	;Draw + sign and p1 or p2 based on the current_player byte
+ 
     mov ah, 2h              ;Setting the Status Bar
     mov bh, 0      
     mov dl, 0 
@@ -166,10 +169,7 @@ MAIN    PROC
        INT 16H  
    
        JNE Key_Pressed1
-       JMP NO_Key_Pressed1 
-       
-CHECK_1:
-JMP CHECK       
+       JMP NO_Key_Pressed1       
                      
     Key_Pressed1:   
        MOV AH,0             ;clear used scan code from buffer
@@ -236,7 +236,7 @@ JMP CHECK
         
         JNE Key_Pressed2
         JMP NO_Key_Pressed2               
-        
+   
     Key_Pressed2:   
         MOV AH,0             ;clear used scan code from buffer
         INT 16H  
@@ -256,7 +256,8 @@ JMP CHECK
         pop cx
         pop bx
         pop ax
-                   
+CHECK_1:
+JMP CHECK               
     NO_Key_Pressed2:    
                      
     loop SecondHalfCycle
@@ -339,7 +340,8 @@ Shoot:
 	
     GoToCheckScores:
 		Call CheckScores
-    jmp CHECK_1 
+	cmp GameOver, 0
+    jz CHECK_1 
         
     
 Exit: 
@@ -955,6 +957,9 @@ CheckScores PROC
         mov ah, 9
         mov dx, offset p1_win
         int 21h
+		
+		mov GameOver, 1
+		
         jmp Exit_CheckScores
         
     P2Win:
@@ -966,6 +971,9 @@ CheckScores PROC
         mov ah, 9
         mov dx, offset p2_win
         int 21h 
+		
+		mov GameOver, 1
+		
         jmp Exit_CheckScores         
         
      Draws:
@@ -977,6 +985,8 @@ CheckScores PROC
         mov ah, 9
         mov dx, offset Draw
         int 21h
+		
+		mov GameOver, 1
 
 
 	Exit_CheckScores:
