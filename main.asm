@@ -59,7 +59,6 @@ MAIN    PROC
          
     CALL GetNames
     
-    ;mov current_player, 2 ;Set player to player 2
         
     CALL DrawInterface   
     
@@ -245,6 +244,7 @@ JMP CHECK
         JE Shoot     
         cmp ah,1H                  ;Esc
         JE Exit
+		
         push ax
         push bx
         push cx
@@ -343,7 +343,7 @@ Shoot:
         
     
 Exit: 
-    mov ah,004CH
+    mov ah,4CH
     int 21H    
 
 
@@ -368,7 +368,6 @@ RightUp PROC
      
     dec RBCenterU
     print RBCenterU,70,Goalkeeper_Color
-    Delete RBCenterD,70
     Delete RBCenterD,70 
     DEC RBCenterD
    
@@ -462,57 +461,13 @@ DrawInterface   PROC
     mov cx, 0
     mov dx, 0
         
-    ;Draw + (Player)
-    mov ah, 2
-    mov dl, 5 ;Move to position X=5
-    mov dh, 7 ;Move to position Y=7
-    int 10h  
-    
-    mov bh, 0
-    mov dx, 0
-	mov al, '+'
-	mov bl, Player_Color
-    mov ah, 9
-    mov cx, 1
-    int 10h
-    
-    ;Write P1 or P2 under the + sign
-    mov al, 0
-    mov ah, 2
-    mov dl, 5 ;Move to position X=5
-    mov dh, 8 ;Move to position Y=11
-    int 10h 
-    
-    mov bh, 0
-    mov dx, 0
-	mov al, 'P'
-	mov bl, Player_Color
-    mov ah, 9
-    mov cx, 1
-    int 10h
-                            
-    cmp current_player, 1  ;Check if the current player is player1
-    JE write_1
-    
-    ;if player 2 => Print 2
-	Call Print_P2
-    
-    mov ax,0
-    AND ax,ax
-    JE continue1
-    
-	write_1:
-    ;if player 1 => Print 1
-    Call Print_P1
-    
-    continue1:
+    Call Write_P1_P2	;Draw + sign and p1 or p2 based on the current_player byte
     
     ;Draw the goal
     
         ;Draw colored spaces indicating the goal beginning
         
         mov cl, GoalDim[0]
-        
         
         loop0:
         push cx
@@ -626,7 +581,7 @@ mov dx, 0
     ;Move to write player 2 info
     mov ah, 2      
     mov dh, 16 ;Move to position Y=16 
-    mov dl, 73 
+    mov dl, 78 
     sub dl, p2_name[1]
     int 10h
     
@@ -724,12 +679,45 @@ DrawBall PROC
 	RET
 DrawBall ENDP
 
-Print_P1 PROC
+Write_P1_P2 PROC
 	push ax
 	push bx
 	push cx
 	push dx
 	
+	;Draw + (Player)
+    mov ah, 2
+    mov dl, 5 ;Move to position X=5
+    mov dh, 7 ;Move to position Y=7
+    int 10h  
+    
+    mov bh, 0
+    mov dx, 0
+	mov al, '+'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
+    
+    ;Write P1 or P2 under the + sign
+    mov al, 0
+    mov ah, 2
+    mov dl, 5 ;Move to position X=5
+    mov dh, 8 ;Move to position Y=11
+    int 10h 
+    
+    mov bh, 0
+    mov dx, 0
+	mov al, 'P'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
+                            
+    cmp current_player, 1  ;Check if the current player is player1
+    jz write_1
+    
+    ;if player 2 => Print 2
 	mov al, 0
     mov ah, 2
     mov dl, 6 ;Move to position X=6
@@ -743,42 +731,35 @@ Print_P1 PROC
     mov ah, 9
     mov cx, 1
     int 10h
+    
+    mov ax,0
+    AND ax,ax
+    jz Exit_Write_P1_P2
+    
+    ;if player 1 => Print 1
+    write_1:
+	mov al, 0
+    mov ah, 2
+    mov dl, 6 ;Move to position X=6
+    mov dh, 8 ;Move to position Y=8
+    int 10h
 	
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	
-	RET
-Print_P1 ENDP
+    mov bh, 0
+    mov dx, 0
+	mov al, '1'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
 
-Print_P2 PROC
-	push ax
-	push bx
-	push cx
-	push dx
-	
-	mov al, 0
-    mov ah, 2
-    mov dl, 6 ;Move to position X=6
-    mov dh, 8 ;Move to position Y=8
-    int 10h
-	
-    mov bh, 0
-    mov dx, 0
-	mov al, '2'
-	mov bl, Player_Color
-    mov ah, 9
-    mov cx, 1
-    int 10h
-	
+	Exit_Write_P1_P2:
 	pop dx
 	pop cx
 	pop bx
 	pop ax
 	
 	RET
-Print_P2 ENDP
+Write_P1_P2 ENDP
 
 ChangeScore PROC   ;taken from write in fifth of screen
     
@@ -798,26 +779,14 @@ ChangeScore PROC   ;taken from write in fifth of screen
     
     ;Player 1 Info  
     
-    push bx
-    push cx
-    mov cx, 0 
-    mov bx, 2
-    mov cl, p1_name[1]
-    p1loop:
-    mov ah,2
-    mov dl, p1_name[bx]
-    int 21h
-    inc bx
-    loop p1loop
-    pop cx
-    pop bx
-       
+   ;Move to write player 2 info
     mov ah, 2
-    mov bx, 0
-    mov dl, ':'
-    int 21h
-    
-    
+    mov bh,0      
+    mov dh, 16 ;Move to position Y=16 
+    mov dl, p1_name[1] 
+	inc dl
+    int 10h
+	
     mov bl, p1_score
     add bl, '0'
     mov ah, 2
@@ -828,30 +797,9 @@ ChangeScore PROC   ;taken from write in fifth of screen
     mov ah, 2
     mov bh,0      
     mov dh, 16 ;Move to position Y=16 
-    mov dl, 73 
-    sub dl, p1_name[1]
+    mov dl, 79 
     int 10h
-    
-    ;Player 2 Info
-   
-    push bx
-    push cx 
-    mov bx, 2
-    mov cx, 0
-    mov cl, p2_name[1]
-    p2loop:
-    mov ah,2
-    mov dl, p2_name[bx] 
-    int 21h
-    inc bx
-    loop p2loop
-    pop cx
-    pop bx
-    
-    mov ah, 2
-    mov dl, ':'
-    int 21h
-           
+               
     mov bl, p2_score
     add bl, '0'
     mov ah, 2
