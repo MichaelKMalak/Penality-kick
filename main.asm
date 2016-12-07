@@ -1,4 +1,4 @@
- include macros.inc
+include macros.inc
 
 .MODEL SMALL
 .STACK 64    
@@ -7,12 +7,12 @@
  Chat db 'To start chatting press 1','$'
  Play db 'To start Penality Game press 2','$'
  EndGame db 'To end the game press ESC','$' 
-
+ GameIsOver db 'Gameover.','$'
+ Restart db 'To restart game press 1','$'
+ FinalString db 30 dup('$')
  
- RBTop       db 6
  RBCenterU   db 7
  RBCenterD   db 8
- RBBottom    db 9
                
  ask_p1_name db 'Player 1 Name: ','$'
  ask_p2_name db 'Player 2 Name: ','$'
@@ -60,18 +60,15 @@
  
 .CODE   
 MAIN    PROC   
-    
     mov ax, @DATA
     mov ds, ax
-    mov ax, 0
-     
-         
+	
+	RestartProc:
+	mov ax, 0
+	CALL ResetAll
     CALL GetNames 
-    
-    CALL MainMenu
-        
+    CALL MainMenu   
     CALL DrawInterface   
-    
     CALL WriteOneFifthScreen
     
     mov Ah,03h
@@ -95,7 +92,7 @@ MAIN    PROC
  CHECK:
     call Delay
     call Delay 
-	Call Write_P1_P2	;Draw + sign and p1 or p2 based on the current_player byte
+	Call Write_P1_P2		;Draw + sign and p1 or p2 based on the current_player byte
  
     mov ah, 2h              ;Setting the Status Bar
     mov bh, 0      
@@ -354,8 +351,10 @@ Shoot:
 		Call CheckScores
 	cmp GameOver, 0
     JE CHECK_1 
-        
-    
+    call delay
+	call GameOverMenu
+    jmp RestartProc
+	
 Exit: 
     mov ah,4CH
     int 21H    
@@ -829,6 +828,8 @@ ChangeScore PROC   ;taken from write in fifth of screen
 ChangeScore ENDP 
 
 CheckScores PROC
+	mov AX,DS
+    mov ES,AX   
 	push ax
 	push bx
 	push cx
@@ -986,6 +987,12 @@ CheckScores PROC
 		
 		mov GameOver, 1
 		
+		CLD    
+		mov si,offset p1_win
+		mov di,offset FinalString
+		mov cx,13
+		REP MOVSB
+		
         jmp Exit_CheckScores
         
     P2Win:
@@ -1000,6 +1007,12 @@ CheckScores PROC
 		
 		mov GameOver, 1
 		
+		CLD    
+		mov si,offset p2_win
+		mov di,offset FinalString
+		mov cx,13
+		REP MOVSB
+		
         jmp Exit_CheckScores         
         
      Draws:
@@ -1013,6 +1026,13 @@ CheckScores PROC
         int 21h
 		
 		mov GameOver, 1
+						
+		CLD    
+		mov si,offset Draw
+		mov di,offset FinalString
+		mov cx,12
+		REP MOVSB
+		
 
 
 	Exit_CheckScores:
@@ -1087,6 +1107,101 @@ MainMenu Proc
         RET
 MainMenu ENDP
 
+GameOverMenu Proc
+    
+    push ax
+    push bx
+    push cx
+    push dx
+    push ds 
+    
+    mov ah, 0
+    mov al, 3
+    int 10h
+    
+    mov ax, 0600h
+    mov bh, 07
+    mov cx, 0
+    mov dx, 184fh
+    int 10h
+    
+    
+    PrintText 10,30,GameIsOver
+	PrintText 11,30,FinalString
+    PrintText 13,30,Restart
+    PrintText 14,30,EndGame  
+    
+    mov ch,0
+    mov cl,0 
+    RM:  
+        push cx
+        Print 20, cl, Hr_Line_Color
+        pop cx            
+        inc cl
+        cmp cl, 80
+        JNE RM
+    
+    mov AH,0             	  ;clear used scan code from buffer
+    int 16H 
+    
+    cmp al,49                 ;1 to Restart
+    JE  RestartGame
+    
+    cmp ah,1H                  ;Esc
+    JE ExitMenu
+    
+    
+    ExitMenu:
+        mov ah,4CH
+        int 21H
+		
+	RestartGame:	
+        pop ds
+        pop dx
+        pop cx
+        pop bx
+        pop ax 
+        RET
+GameOverMenu ENDP
 
+ResetAll Proc
+	mov AX,DS
+    mov ES,AX  
+	
+	mov ax,0
+	mov p1_score, al  ;Intially player 1 score is 0
+	mov p2_score, al  ;Intially player 2 score is 0
+	mov GameOver, al 
+	
+	mov bl,1
+	mov current_player,bl
+	mov Total_Shoots,bl
+	
+	mov bl,7			;Goalkeeper reset position
+	mov RBCenterU,bl
+	
+	mov bl,8			;Goalkeeper reset position
+	mov RBCenterD,bl
+	
+	mov bl,72
+	mov hor,bl          ;Last Horizontal Ball Postion
+ 
+	mov dl,'$'			;Clear players' names
+	mov cx,30
+	CLD
+	ClearNames:     
+	mov si,offset p1_name
+	mov di,offset p2_name
+	mov bx,offset FinalString
+	mov [si],dl
+	mov [di],dl
+	mov [bx],dl
+	inc si
+	inc di
+	inc bx
+	loop ClearNames
 
-END MAIN                   	
+	RET
+ResetAll ENDP
+
+END MAIN    
