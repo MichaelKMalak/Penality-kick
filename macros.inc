@@ -24,3 +24,14 @@ Delete Macro row, column
    int 10h 
 ENDM Delete
 
+
+PrintText Macro row , column , text
+	mov ah,2
+	mov bh,0
+	mov dl,column
+	mov dh,row
+	int 10h
+	mov ah, 9
+    mov dx, offset text
+    int 21h
+ENDM PrintText
