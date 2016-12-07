@@ -2,7 +2,12 @@
 
 .MODEL SMALL
 .STACK 64    
-.DATA 
+.DATA  
+
+ Chat db 'To start chatting press 1','$'
+ Play db 'To start Penality Game press 2','$'
+ EndGame db 'To end the game press ESC','$' 
+
  
  RBTop       db 6
  RBCenterU   db 7
@@ -47,7 +52,10 @@
  Save db 'The Keeper Saved The Ball','$'
  Outside db 'The Ball is Out !','$'
 
- GameOver db 0
+ GameOver db 0     
+ 
+ ver db ?         ;Last Vertical Ball Postion
+ hor db 72        ;Last Horizontal Ball Postion
  
  
 .CODE   
@@ -58,8 +66,9 @@ MAIN    PROC
     mov ax, 0
      
          
-    CALL GetNames
+    CALL GetNames 
     
+    CALL MainMenu
         
     CALL DrawInterface   
     
@@ -83,7 +92,9 @@ MAIN    PROC
 
 ;Wait for key from keyboard to shoot
     
- CHECK: 
+ CHECK:
+    call Delay
+    call Delay 
 	Call Write_P1_P2	;Draw + sign and p1 or p2 based on the current_player byte
  
     mov ah, 2h              ;Setting the Status Bar
@@ -98,6 +109,7 @@ MAIN    PROC
     mov cx,80               ;80 Times to cover all Horizontal Line
     mov bl ,0AFh            ;Set Status Bar Color -> white on Green Background
     int 10h
+    
     
     cmp current_player,1
     JE p1
@@ -326,14 +338,14 @@ Shoot:
         mov dl,' '
         int 21h  
      
-        add bl ,6 
+        add bl ,3 
         
         ;Fady's Part
 		mov ah,3h
 		mov bh,0h
 		int 10h
          
-		cmp dl,69                             ;X is higher than the Goal Line
+		cmp dl,68                             ;X is higher than the Goal Line
 		JAE GoToCheckScores  
 		
     Loop Horizontal         
@@ -341,7 +353,7 @@ Shoot:
     GoToCheckScores:
 		Call CheckScores
 	cmp GameOver, 0
-    jz CHECK_1 
+    JE CHECK_1 
         
     
 Exit: 
@@ -717,7 +729,7 @@ Write_P1_P2 PROC
     int 10h
                             
     cmp current_player, 1  ;Check if the current player is player1
-    jz write_1
+    JE write_1
     
     ;if player 2 => Print 2
 	mov al, 0
@@ -736,7 +748,7 @@ Write_P1_P2 PROC
     
     mov ax,0
     AND ax,ax
-    jz Exit_Write_P1_P2
+    JE Exit_Write_P1_P2
     
     ;if player 1 => Print 1
     write_1:
@@ -837,6 +849,8 @@ CheckScores PROC
         cmp dh,11
         JAE Outline
         
+        mov ver ,dh
+        
         JMP Goal
         
     Outline:
@@ -864,7 +878,14 @@ CheckScores PROC
         JMP Switch
           
     
-    Goal:
+    Goal: 
+      mov ah, 2h
+      mov bh, 0      
+      mov dl, hor 
+      int 10h  
+      
+      Call DrawBall
+    
       cmp current_player,1
       JE incp1
       
@@ -900,7 +921,8 @@ CheckScores PROC
       
       
       
-    Switch:
+    Switch: 
+       call Delay
        ;Switch the players
        cmp current_player ,1
        JE Setp1
@@ -920,14 +942,18 @@ CheckScores PROC
           jmp Final  
     
       
-   Final:   
+   Final: 
+      Delete ver , hor
+      call Delay                     
       call ChangeScore  
       
       cmp Total_Shoots,10
       JE Result
-      
+        
+      call Delay  
       inc Total_Shoots
-      
+      call Delay          
+                
       jmp Exit_CheckScores         
                                           
     
@@ -996,7 +1022,71 @@ CheckScores PROC
 	pop ax
 	
 	RET
-CheckScores ENDP
+CheckScores ENDP 
+
+MainMenu Proc
+    
+    push ax
+    push bx
+    push cx
+    push dx
+    push ds 
+    
+    mov ah, 0
+    mov al, 3
+    int 10h
+    
+    mov ax, 0600h
+    mov bh, 07
+    mov cx, 0
+    mov dx, 184fh
+    int 10h
+    
+    
+    PrintText 10,30,Chat
+    PrintText 11,30,Play
+    PrintText 12,30,EndGame  
+    
+    mov ch,0
+    mov cl,0 
+    MM:  
+        push cx
+        Print 20, cl, Hr_Line_Color
+        pop cx            
+        inc cl
+        cmp cl, 80
+        JNE MM
+    
+    mov AH,0             ;clear used scan code from buffer
+    int 16H 
+    
+    cmp al,49                 ;F1 to Start Chat
+    JE  ExitMain
+    ;Call Chatting
+
+
+    cmp al,50                 ;F2 to Start Game   
+    JE Gaming
+    
+    
+    cmp ah,1H                  ;Esc
+    JE ExitMain
+    
+    
+    ExitMain:
+        mov ah,4CH
+        int 21H
+    
+        
+    Gaming: 
+        pop ds
+        pop dx
+        pop cx
+        pop bx
+        pop ax 
+        RET
+MainMenu ENDP
+
 
 
 END MAIN                   	
