@@ -8,37 +8,35 @@ include macros.inc
 .MODEL SMALL
 .STACK 64    
 .DATA  
- 	GameStart db '  ',0ah,0dh
-	db '                ====================================================',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh                                        
-	db '               ||       *    Penality Shooting Game      *         ||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh
-	db '               ||--------------------------------------------------||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh          
-	db '               ||     Use up and down key to move goalkeeper bar   ||',0ah,0dh
-	db '               ||          and enter button to shoot               ||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh
-	db '               ||            Two players switch every turn         ||',0ah,0dh
-	db '               ||            Each player Shoots 5 times            ||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh
-	db '               ||            Press 2 to start playing              ||',0ah,0dh 
-	db '               ||            Press 1 to start chatting             ||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh
-	db '               ||            Press ESC to Exit                     ||',0ah,0dh
-	db '                ====================================================',0ah,0dh
+ 	GameStart db '              ====================================================',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh                                        
+	db '             ||       *    Penality Shooting Game      *         ||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh
+	db '             ||--------------------------------------------------||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh          
+	db '             ||     Use up and down key to move goalkeeper bar   ||',0ah,0dh
+	db '             ||          and enter button to shoot               ||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh
+	db '             ||            Two players switch every turn         ||',0ah,0dh
+	db '             ||            Each player Shoots 5 times            ||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh
+	db '             ||            Press 2 to start playing              ||',0ah,0dh 
+	db '             ||            Press 1 to start chatting             ||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh
+	db '             ||            Press ESC to Exit                     ||',0ah,0dh
+	db '              ====================================================',0ah,0dh
 	db '$',0ah,0dh
 	
-	GameEnd db '  ',0ah,0dh
-                                
-	db '               		 *    GAMEOVER      *  		       ',0ah,0dh
-	db '                ====================================================',0ah,0dh        
-	db '               ||               Press 1 to restart		    ||',0ah,0dh
-	db '               ||               Press ESC to Exit                  ||',0ah,0dh
-	db '               ||                                                  ||',0ah,0dh
-	db '                ====================================================',0ah,0dh
+	GameEnd db '         		 *    GAMEOVER      *  		       ',0ah,0dh
+	db '              ====================================================',0ah,0dh        
+	db '             ||               Press 1 to restart		    ||',0ah,0dh
+	db '             ||               Press ESC to Exit                  ||',0ah,0dh
+	db '             ||                                                  ||',0ah,0dh
+	db '             ====================================================',0ah,0dh
 	db '$',0ah,0dh
+	
  ask_p1_name db 'Player 1 Name: ','$'
  ask_p2_name db 'Player 2 Name: ','$'
  score_msg db "'s score:$"
