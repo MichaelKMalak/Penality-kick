@@ -10,7 +10,8 @@
 ;;=============================================================================;;
 ;;=============================================================================;;
 ;;         Use up and down arrows to move goalkeeper bar   		       ;;
-;;                Use enter button to shoot the ball  			       ;;
+;;                Press enter button to shoot the ball  		       ;;
+;;                Press the ECS button to Exit the game 		       ;;
 ;;=============================================================================;;
             
 include macros.inc
