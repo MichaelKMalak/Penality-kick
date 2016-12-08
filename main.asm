@@ -29,7 +29,7 @@ include macros.inc
 	db '              ====================================================',0ah,0dh
 	db '$',0ah,0dh
 	
-	GameEnd db '         *    GAMEOVER      *  		       ',0ah,0dh
+	GameEnd db '        		 *    GAMEOVER      *  		       ',0ah,0dh
 	db '              ====================================================',0ah,0dh     
 	db '             ||            Press 1 to restart the game           ||',0ah,0dh
 	db '             ||            Press ESC to Exit                     ||',0ah,0dh
@@ -1246,7 +1246,7 @@ GameOverMenu Proc
     PrintText 0,0,GameEnd
 	
 	;print who won
-    PrintText 13,32,FinalString
+    PrintText 10,32,FinalString
 	
     mov ch,0
     mov cl,0 
