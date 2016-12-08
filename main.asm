@@ -1,5 +1,5 @@
 ;;=============================================================================;;
-;;                 Multiplayer Penality shots game                             ;;
+;;                 Multiplayer Penality shooting game                          ;;
 ;;                 Tested on DOSBox and emu8086                                ;;
 ;;=============================================================================;;
 
@@ -35,7 +35,7 @@ include macros.inc
  RBCenterD   db 8
  p1_score db 0  			;Intially player 1 score is 0
  p2_score db 0  			;Intially player 2 score is 0
- GoalDim db 71, 3, 75, 11 	;X1,Y1, X2,Y2
+ GoalDim db 71, 3, 75, 11 	        ;X1,Y1, X2,Y2
  current_player db 1                        
  Hr_Line_Color db 0c0h
  Goal_Color db 0c0h
@@ -46,7 +46,7 @@ include macros.inc
  
  temp dw ? 
  Shoot_Key  db  1Ch		 	;Enter scan code   
- Total_Shoots db 1       	;inc until 10 (5 for each player)
+ Total_Shoots db 1       	        ;inc until 10 (5 for each player)
  GameOver db 0     
  
  ver db ?         			;Last Vertical Ball Postion
@@ -63,12 +63,12 @@ MAIN    PROC
     
     CALL ResetAll			;Resets positions and player names
     CALL GetNames 			;Gets player names
-    CALL MainMenu   		;Displays the main menu
-    CALL DrawInterface   	;Draws the intial game interface
-    CALL DrawBottomSection	;Draws the in-game chat
+    CALL MainMenu   	         	;Displays the main menu
+    CALL DrawInterface   	        ;Draws the intial game interface
+    CALL DrawBottomSection	        ;Draws the in-game chat
     
     ;Wait for key from keyboard to shoot
-	mov Ah,03h
+    mov Ah,03h
     int 10h    
     mov Bh, 00
     mov Cx, 01  
@@ -79,23 +79,23 @@ MAIN    PROC
  CHECK:
     call Delay				
     call Delay 
-	Call Write_P1_P2		;Draw + sign and p1 or p2 based on the current_player byte
+    Call Write_P1_P2		;Draw + sign and p1 or p2 based on the current_player byte
  
-    mov ah, 2h              ;Setting the Status Bar
+    mov ah, 2h                  ;Setting the Status Bar
     mov bh, 0      
     mov dl, 0 
     mov dh, 14
     int 10h
      
-    mov ah,9                ;Clear The Status Bar
+    mov ah,9                    ;Clear The Status Bar
     mov bh,0 
-    mov al,32               ;Printing Space
-    mov cx,80               ;80 Times to cover all Horizontal Line
-    mov bl ,0AFh            ;Set Status Bar Color -> white on Green Background
+    mov al,32                   ;Printing Space
+    mov cx,80                   ;80 Times to cover all Horizontal Line
+    mov bl ,0AFh                ;Set Status Bar Color -> white on Green Background
     int 10h
     
     
-    cmp current_player,1
+    cmp current_player,1	;check the current player
     JE p1
     
     jmp p2
@@ -108,8 +108,8 @@ MAIN    PROC
           int 10h
           
           mov ah, 9h
-		  mov dx, offset Turn1
-		  int 21h
+	  mov dx, offset Turn1
+	  int 21h
 		  
           jmp Cont
     
@@ -127,7 +127,7 @@ MAIN    PROC
           jmp Cont  
     
     Cont:
-                            ;Get Curve co
+        ;Get Curve co
         mov bl,0 
         mov cx,Coordinate_BallCurve[2] ; radius 
           
@@ -161,19 +161,19 @@ MAIN    PROC
        
        inc bl
          
-       MOV AH,1              ;Get key pressed
+       MOV AH,1             	  ;Get key pressed
        INT 16H  
    
        JNE Key_Pressed1
        JMP NO_Key_Pressed1       
                      
     Key_Pressed1:   
-       MOV AH,0             ;clear used scan code from buffer
+       MOV AH,0             	  ;clear used scan code from buffer
        INT 16H  
    
        cmp ah,Shoot_Key   
        JE Shoot     
-       cmp ah,1H                  ;Esc
+       cmp ah,1H                  ;Esc to terminate the Game
        JE Exit_1
        push ax
        push bx
@@ -200,9 +200,9 @@ MAIN    PROC
     SecondHalfCycle:   
        mov ah,2
        mov dx, temp
-       sub dl,bl         ;dec X Coordinate -->left
+       sub dl,bl       			;dec X Coordinate -->left
        dec dl
-       add dh,bl         ;inc Y Coordinate -->down
+       add dh,bl        		;inc Y Coordinate -->down
        int 10h    
        
        push dx
@@ -227,18 +227,18 @@ MAIN    PROC
             
         inc bl     
         
-        MOV AH,1              ;Get key pressed
+        MOV AH,1              		;Get key pressed
         INT 16H  
         
         JNE Key_Pressed2
         JMP NO_Key_Pressed2               
    
     Key_Pressed2:   
-        MOV AH,0             ;clear used scan code from buffer
+        MOV AH,0             		;clear used scan code from buffer
         INT 16H  
         cmp ah,Shoot_Key   
         JE Shoot     
-        cmp ah,1H                  ;Esc
+        cmp ah,1H                  	;Esc to terminate the Game
         JE Exit
 		
         push ax
@@ -281,7 +281,7 @@ Shoot:
         JMP NO_Key_Pressed3               
        
     Key_Pressed3:   
-        MOV AH,0             ;clear used scan code from buffer
+        MOV AH,0          	 ;clear used scan code from buffer
         INT 16H      
         
         push ax
@@ -299,7 +299,7 @@ Shoot:
     NO_Key_Pressed3:
         mov ah,2
         mov dx,temp
-        add dl,bl     ;inc X horizonatally -->right
+        add dl,bl    		 ;inc X horizonatally -->right
         int 10h   
         
         push dx
@@ -324,23 +324,24 @@ Shoot:
      
         add bl ,3 
         
-        ;Fady's Part
-		mov ah,3h
-		mov bh,0h
-		int 10h
+	mov ah,3h			      ;check the ball current position
+	mov bh,0h
+	int 10h
          
-		cmp dl,68                             ;X is higher than the Goal Line
-		JAE GoToCheckScores  
+	cmp dl,68                             ;X is Greater than or Equal the Goal Line
+	JAE GoToCheckScores  		      ;It Reached the Line
 		
     Loop Horizontal         
 	
     GoToCheckScores:
-		Call CheckScores
+	Call CheckScores
 	cmp GameOver, 0
-    JE CHECK_1 
+    	JE CHECK_1 
+	
     call delay
-	call GameOverMenu				;When game is over, display Gameover menu
-    jmp RestartProc					;If didn't call Exit, jump to Restart the game
+    call GameOverMenu				;When game is over, display Gameover menu
+    
+    jmp RestartProc				;If didn't call Exit, jump to Restart the game
 	
 Exit: 
     ClearScreen
@@ -857,7 +858,7 @@ Write_P1_P2 PROC
 Write_P1_P2 ENDP
 ;==================================================
 
-ChangeScore PROC   ;taken from write in fifth of screen
+ChangeScore PROC   ;taken from write in fifth of screen ;Update the Score Every Shoot
     
 	push ax
 	push bx
@@ -866,8 +867,8 @@ ChangeScore PROC   ;taken from write in fifth of screen
 	
     mov ah, 2
     mov bh,0      
-    mov dl, 0 ;Move to position X=0
-    mov dh, 16 ;Move to position Y=21
+    mov dl, 0 			;Move to position X=0
+    mov dh, 16 			;Move to position Y=16
     int 10h 
     
     
@@ -878,9 +879,9 @@ ChangeScore PROC   ;taken from write in fifth of screen
    ;Move to write player 2 info
     mov ah, 2
     mov bh,0      
-    mov dh, 16 ;Move to position Y=16 
+    mov dh, 16 			;Move to position Y=16 
     mov dl, p1_name[1] 
-	inc dl
+    inc dl
     int 10h
 	
     mov bl, p1_score
@@ -892,7 +893,7 @@ ChangeScore PROC   ;taken from write in fifth of screen
     ;Move to write player 2 info
     mov ah, 2
     mov bh,0      
-    mov dh, 16 ;Move to position Y=16 
+    mov dh, 16 			;Move to position Y=16 
     mov dl, 79 
     int 10h
                
@@ -911,9 +912,9 @@ ChangeScore PROC   ;taken from write in fifth of screen
 ChangeScore ENDP 
 ;==================================================
 
-CheckScores PROC
+CheckScores PROC			;Check The Ball Position
 	mov AX,DS
-    mov ES,AX   
+    	mov ES,AX   
 	push ax
 	push bx
 	push cx
@@ -929,9 +930,9 @@ CheckScores PROC
         
     
         ;Between the Goal's Region 
-        cmp dh,3
+        cmp dh,3			;upper outside
         JBE Outline
-        cmp dh,11
+        cmp dh,11			;lower outside
         JAE Outline
         
         mov ver ,dh
@@ -976,9 +977,10 @@ CheckScores PROC
       
       cmp current_player,2 
       JE incp2
-         
-                                          ;Incrementing The Scores
-    incp1:
+    
+    
+    ;Incrementing The Scores
+    incp1: 				;Player 1 Score
       mov ah, 2h
       mov bh, 0      
       mov dl, 0 
@@ -986,12 +988,12 @@ CheckScores PROC
       int 10h
           
       mov ah, 9h
-	  mov dx, offset Goal1
-	  int 21h
+      mov dx, offset Goal1
+      int 21h
       inc p1_score      
       jmp Switch  
       
-    incp2:
+    incp2:				;Player 2 Score
       mov ah, 2h
       mov bh, 0      
       mov dl, 0 
@@ -999,14 +1001,14 @@ CheckScores PROC
       int 10h
           
       mov ah, 9h
-	  mov dx, offset Goal2
-	  int 21h
+      mov dx, offset Goal2
+      int 21h
       inc p2_score      
       jmp Switch 
       
       
       
-    Switch: 
+    Switch:				;Switching the Player for the next shooting 
        call Delay
        ;Switch the players
        cmp current_player ,1
@@ -1032,7 +1034,7 @@ CheckScores PROC
       call Delay                     
       call ChangeScore  
       
-      cmp Total_Shoots,10
+      cmp Total_Shoots,10		;check if each player done the 5 shoots
       JE Result
         
       call Delay  
@@ -1049,14 +1051,15 @@ CheckScores PROC
     
         mov dh,p1_score
         mov dl,p2_score
-        cmp dl,dh
-        JB P1Win
+	
+        cmp dl,dh			;compare the scores and print the winner
+        JB P1Win			;Player 1 Won
         
         cmp dl,dh
-        JA P2Win
+        JA P2Win			;Player 2 Won
         
         
-        JMP Draws
+        JMP Draws			;It is a Draw
     
     
     P1Win:
@@ -1069,13 +1072,13 @@ CheckScores PROC
         mov dx, offset p1_win
         int 21h
 		
-		mov GameOver, 1
+	mov GameOver, 1
 		
-		CLD    
-		mov si,offset p1_win
-		mov di,offset FinalString
-		mov cx,13
-		REP MOVSB
+	CLD    
+	mov si,offset p1_win
+	mov di,offset FinalString
+	mov cx,13
+	REP MOVSB
 		
         jmp Exit_CheckScores
         
@@ -1089,13 +1092,13 @@ CheckScores PROC
         mov dx, offset p2_win
         int 21h 
 		
-		mov GameOver, 1
+	mov GameOver, 1
 		
-		CLD    
-		mov si,offset p2_win
-		mov di,offset FinalString
-		mov cx,13
-		REP MOVSB
+	CLD    
+	mov si,offset p2_win
+	mov di,offset FinalString
+	mov cx,13
+	REP MOVSB
 		
         jmp Exit_CheckScores         
         
@@ -1109,21 +1112,21 @@ CheckScores PROC
         mov dx, offset Draw
         int 21h
 		
-		mov GameOver, 1
+	mov GameOver, 1
 						
-		CLD    
-		mov si,offset Draw
-		mov di,offset FinalString
-		mov cx,12
-		REP MOVSB
+	CLD    
+	mov si,offset Draw
+	mov di,offset FinalString
+	mov cx,12
+	REP MOVSB
 		
 
 
 	Exit_CheckScores:
-	pop dx
-	pop cx
-	pop bx
-	pop ax
+		pop dx
+		pop cx
+		pop bx
+		pop ax
 	
 	RET
 CheckScores ENDP 
@@ -1137,7 +1140,7 @@ MainMenu Proc
     push dx
     push ds 
     
-    mov ah, 0
+    mov ah, 0				;Clearing the Screen
     mov al, 3
     int 10h
     
@@ -1148,13 +1151,14 @@ MainMenu Proc
     int 10h
     
     
+    ;Printing the Menu Selections by setting course and use the Macro
     PrintText 10,30,Chat
     PrintText 11,30,Play
     PrintText 12,30,EndGame  
     
     mov ch,0
     mov cl,0 
-    MM:  
+    MM:  				;Printing the Lower line to be used for Notification
         push cx
         Print 20, cl, Hr_Line_Color
         pop cx            
@@ -1162,19 +1166,19 @@ MainMenu Proc
         cmp cl, 80
         JNE MM
     
-    mov AH,0             ;clear used scan code from buffer
+    mov AH,0            		 ;clear used scan code from buffer
     int 16H 
     
-    cmp al,49                 ;F1 to Start Chat
+    cmp al,49              		  ;1 to Start Chat
     JE  ExitMain
-    ;Call Chatting
+    ;Call Chatting In Phase 4
 
 
-    cmp al,50                 ;F2 to Start Game   
+    cmp al,50                		  ;2 to Start Game   
     JE Gaming
     
     
-    cmp ah,1H                  ;Esc
+    cmp ah,1H                 		 ;Esc to exit the game
     JE ExitMain
     
     
@@ -1216,11 +1220,11 @@ GameOverMenu Proc
     mov dx, 184fh
     int 10h
     
-	;print who won
+    ;print who won
     PrintText 10,30,GameIsOver
-	PrintText 11,30,FinalString
+    PrintText 11,30,FinalString
 	
-	;Print the options the user has
+    ;Print the options the user has
     PrintText 13,30,Restart
     PrintText 14,30,EndGame  
     
@@ -1264,7 +1268,7 @@ GameOverMenu ENDP
 ; 2- resets the scores to zeros
 ; 3- resets the position of the goalkeeper
 ; 4- resets the postion of the ball
-; 5-resets the turn of current players and total number of shoots
+; 5- resets the turn of current players and total number of shoots
 
 ResetAll Proc
 	mov AX,DS
