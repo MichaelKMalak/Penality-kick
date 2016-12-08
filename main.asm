@@ -17,8 +17,8 @@ include macros.inc
  ask_p1_name db 'Player 1 Name: ','$'
  ask_p2_name db 'Player 2 Name: ','$'
  score_msg db "'s score:$"
- p1_name db 30, ?,  30 dup('$')
- p2_name db 30, ?,  30 dup('$')
+ p1_name db 15, ?,  15 dup('$')
+ p2_name db 15, ?,  15 dup('$')
   
  p1_score db 0  ;Intially player 1 score is 0
  p2_score db 0  ;Intially player 2 score is 0
@@ -69,7 +69,7 @@ MAIN    PROC
     CALL GetNames 
     CALL MainMenu   
     CALL DrawInterface   
-    CALL WriteOneFifthScreen
+    CALL DrawBottomSection
     
     mov Ah,03h
     int 10h    
@@ -356,6 +356,7 @@ Shoot:
     jmp RestartProc
 	
 Exit: 
+    ClearScreen
     mov ah,4CH
     int 21H    
 
@@ -410,39 +411,81 @@ GetNames    PROC
     mov al, 3
     int 10h
     
-    mov ax, 0600h
-    mov bh, 07
-    mov cx, 0
-    mov dx, 184fh
-    int 10h
+    ClearScreen
     
-    mov ah, 2
-    mov dx, 0
-    int 10h
-    
-    mov ah, 9
-    mov dx, offset ask_p1_name
-    int 21h
-    
-    mov ah, 0Ah
-    mov dx, offset p1_name
-    int 21h
-    
+	ask_p1_name_loop:
+		;Clear the line
+		Call ClearLine
+		;Show the user a message to enter player 1 name
+		mov ah, 9
+		mov dx, offset ask_p1_name
+		int 21h
+		
+		;Receive player 1 name from the user
+		mov ah, 0Ah
+		mov dx, offset p1_name
+		int 21h
+		
+	cmp p1_name[1], 0	;Check that input is not empty
+	jz ask_p1_name_loop
+	
+	;Checks on the first letter to ensure that it's either a capital letter or a small letter
+	cmp p1_name[2], 40h
+	jbe ask_p1_name_loop
+	cmp p1_name[2], 7Bh
+	jae ask_p1_name_loop
+	cmp p1_name[2], 5Bh
+	jae p1_check_in_range
+	
+	jmp Continue_To_Player_2
+	
+	p1_check_in_range:
+	cmp p1_name[2], 60h
+	jbe ask_p1_name_loop
+	
+	Continue_To_Player_2:
+	
+	;Move to a new line
     mov ah, 2
     mov dl, 10
     int 21h
     
+	;Go to the beginning of the line
     mov ah, 2
     mov dl, 13
     int 21h
     
-    mov ah, 9
-    mov dx, offset ask_p2_name
-    int 21h
-    
-    mov ah, 0Ah
-    mov dx, offset p2_name
-    int 21h
+	ask_p2_name_loop:
+		;Clear the line
+		Call ClearLine
+		;Show the user a message to enter player 2 name
+		mov ah, 9
+		mov dx, offset ask_p2_name
+		int 21h
+		
+		;Receive player 2 name from the user
+		mov ah, 0Ah
+		mov dx, offset p2_name
+		int 21h
+		
+	cmp p2_name[1], 0	;Check that input is not empty
+	jz ask_p2_name_loop
+	
+	;Checks on the first letter to ensure that it's either a capital letter or a small letter
+	cmp p2_name[2], 40h
+	jbe ask_p2_name_loop
+	cmp p2_name[2], 7Bh
+	jae ask_p2_name_loop
+	cmp p2_name[2], 5Bh
+	jae p2_check_in_range
+	
+	jmp END_GetNames
+	
+	p2_check_in_range:
+	cmp p2_name[2], 60h
+	jbe ask_p2_name_loop
+	
+	END_GetNames:
       
     pop ds
     pop dx
@@ -462,12 +505,7 @@ DrawInterface   PROC
     push dx
     push ds
     
-    mov ax, 0600h
-    mov bh, 07
-    mov cx, 0
-    mov dx, 184fh
-    int 10h
-    
+    ClearScreen	;Clear all the screen    
     
     mov ax, 0
     mov bx, 0
@@ -476,25 +514,25 @@ DrawInterface   PROC
         
     Call Write_P1_P2	;Draw + sign and p1 or p2 based on the current_player byte
     
-    ;Draw the goal
+    ;Draw colored spaces indicating the goal
     
-        ;Draw colored spaces indicating the goal beginning
+        ;Draw the goal top
         
         mov cl, GoalDim[0]
         
         loop0:
-        push cx
-        Print GoalDim[1], cl, Goal_Color
-        pop cx
+			push cx
+			Print GoalDim[1], cl, Goal_Color
+			pop cx
                 
-        inc cl  
-        mov bl, GoalDim[2]
-        inc bl
-        cmp cl, bl 
+			inc cl  
+			mov bl, GoalDim[2]
+			inc bl
+			cmp cl, bl 
         JNE loop0 
         
         
-        ;Draw the back of the goal (|)
+        ;Draw the back of the goal
         mov cl, GoalDim[1]
         inc cl 
         loop1:
@@ -506,18 +544,18 @@ DrawInterface   PROC
         JNE loop1
         
         
-        ;Draw colored spaces indicating the goal ending
+        ;Draw the bottom of the goal
         mov cl, GoalDim[2]
         
         loop2:
-        push cx
-        Print GoalDim[3], cl, Goal_Color
-        pop cx
-         
-        dec cl
-        mov bl, GoalDim[0]
-        dec bl
-        cmp cl, bl        
+			push cx
+			Print GoalDim[3], cl, Goal_Color
+			pop cx
+			 
+			dec cl
+			mov bl, GoalDim[0]
+			dec bl
+			cmp cl, bl        
         JNE loop2 
         
     pop ds
@@ -530,18 +568,51 @@ DrawInterface   PROC
                     
 DrawInterface   ENDP
 
-WriteOneFifthScreen PROC
+ClearLine	Proc
+	
+	push ax
+	push cx
+	push dx
+	
+	;Go to the line beginning
+	
+	mov ah, 2
+	mov dl, 13
+	int 21h
+	;Draw 79 spaces
+	mov cx, 79
+	Clear_Line_loop:
+		mov ah, 2
+		mov dl, ' '
+		int 21h
+	loop Clear_Line_loop
+	
+	;Go to the line beginning
+	
+	mov ah, 2
+	mov dl, 13
+	int 21h
+	
+	pop dx
+	pop cx
+	pop ax
+	
+	RET
+ClearLine	ENDP
+
+DrawBottomSection PROC
     push ax
     push bx
     push cx
     push dx
     push ds
-mov ax, 0
-mov bx, 0
-mov cx, 0
-mov dx, 0
+	
+	mov ax, 0
+	mov bx, 0
+	mov cx, 0
+	mov dx, 0
 
-;Draw last one fifth section
+;Draw the last section in the screen
     
     ;Draw Horizontal Line
     
@@ -551,13 +622,13 @@ mov dx, 0
         pop cx      
         inc cl
         cmp cl, 80
-    JNE loop3
+    jne loop3
     
     ;Move to the next line
     
     mov ah, 2      
     mov dl, 0 ;Move to position X=0
-    mov dh, 16 ;Move to position Y=21
+    mov dh, 16 ;Move to position Y=16
     int 10h 
     
     
@@ -567,57 +638,67 @@ mov dx, 0
     
     push bx
     push cx
+
     mov cx, 0 
     mov bx, 2
     mov cl, p1_name[1]
+
     p1_loop:
-    mov ah,2
-    mov dl, p1_name[bx]
-    int 21h
-    inc bx
+		mov ah,2
+		mov dl, p1_name[bx]
+		int 21h
+		inc bx
     loop p1_loop
+   
     pop cx
     pop bx
-       
+	
+	;Printing a colon between name and score
     mov ah, 2
     mov bx, 0
     mov dl, ':'
     int 21h
     
-    
+    ;Print player 1 score
     mov bl, p1_score
     add bl, '0'
     mov ah, 2
     mov dl, bl
     int 21h
     
-    ;Move to write player 2 info
+    ;Set cursor to write player 2 info
     mov ah, 2      
     mov dh, 16 ;Move to position Y=16 
-    mov dl, 78 
-    sub dl, p2_name[1]
+    mov dl, 78 ;put in dl (80-2), 2=> the colon and the score
+    sub dl, p2_name[1]	;Subtract the actual player name length
+	;the resulted X in dl will align both the name and the score to the right most of the screen
     int 10h
     
     ;Player 2 Info
    
     push bx
     push cx 
+	
     mov bx, 2
     mov cx, 0
     mov cl, p2_name[1]
-    p2_loop:
-    mov ah,2
-    mov dl, p2_name[bx] 
-    int 21h
-    inc bx
-    loop p2_loop
-    pop cx
-    pop bx
     
+	p2_loop:
+		mov ah,2
+		mov dl, p2_name[bx] 
+		int 21h
+		inc bx
+    loop p2_loop
+    
+	pop cx
+    pop bx
+
+   	;Printing a colon between name and score
     mov ah, 2
     mov dl, ':'
     int 21h
-           
+    
+    ;Print player 2 score	
     mov bl, p2_score
     add bl, '0'
     mov ah, 2
@@ -634,7 +715,7 @@ mov dx, 0
         pop cx
         inc cl
         cmp cl, 80
-    JNE loop6
+    jne loop6
     
     pop ds
     pop dx
@@ -644,7 +725,7 @@ mov dx, 0
     
     RET
 
-WriteOneFifthScreen ENDP 
+DrawBottomSection ENDP 
 
 Delay  PROC
     
@@ -716,7 +797,7 @@ Write_P1_P2 PROC
     mov al, 0
     mov ah, 2
     mov dl, 5 ;Move to position X=5
-    mov dh, 8 ;Move to position Y=11
+    mov dh, 8 ;Move to position Y=8
     int 10h 
     
     mov bh, 0
@@ -728,7 +809,7 @@ Write_P1_P2 PROC
     int 10h
                             
     cmp current_player, 1  ;Check if the current player is player1
-    JE write_1
+    je write_1
     
     ;if player 2 => Print 2
 	mov al, 0
@@ -745,12 +826,10 @@ Write_P1_P2 PROC
     mov cx, 1
     int 10h
     
-    mov ax,0
-    AND ax,ax
-    JE Exit_Write_P1_P2
+    jmp Exit_Write_P1_P2
     
-    ;if player 1 => Print 1
     write_1:
+	;if player 1 => Print 1
 	mov al, 0
     mov ah, 2
     mov dl, 6 ;Move to position X=6
