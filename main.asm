@@ -29,7 +29,9 @@ include macros.inc
 	db '              ====================================================',0ah,0dh
 	db '$',0ah,0dh
 	
-	GameEnd db '        		 *    GAMEOVER      *  		       ',0ah,0dh
+	GameEnd db ' ',0ah,0dh
+	db ' ',0ah,0dh
+	db '			*    GAMEOVER      *  		       ',0ah,0dh
 	db '              ====================================================',0ah,0dh     
 	db '             ||            Press 1 to restart the game           ||',0ah,0dh
 	db '             ||            Press ESC to Exit                     ||',0ah,0dh
@@ -577,6 +579,10 @@ DrawInterface   PROC
 			cmp cl, bl        
         JNE loop2 
         
+	;Draw the goal keeper in the intial position
+	Print RBCenterU,70,Goalkeeper_Color     
+	Print RBCenterD,70,Goalkeeper_Color 
+	
     pop ds
     pop dx
     pop cx
