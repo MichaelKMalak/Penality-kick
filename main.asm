@@ -1,3 +1,8 @@
+;;=============================================================================;;
+;;                 Multiplayer Penality shooting game                          ;;
+;;                 Tested on DOSBox and emu8086                                ;;
+;;=============================================================================;;
+
 include macros.inc
 
 .MODEL SMALL
@@ -6,91 +11,73 @@ include macros.inc
 
  Chat db 'To start chatting press 1','$'
  Play db 'To start Penality Game press 2','$'
- EndGame db 'To end the game press ESC','$' 
- GameIsOver db 'Gameover.','$'
- Restart db 'To restart game press 1','$'
- FinalString db 30 dup('$')
- 
- RBCenterU   db 7
- RBCenterD   db 8
-               
  ask_p1_name db 'Player 1 Name: ','$'
  ask_p2_name db 'Player 2 Name: ','$'
  score_msg db "'s score:$"
+ EndGame db 'To end the game press ESC','$' 
+ GameIsOver db 'Gameover.','$'
+ Restart db 'To restart game press 1','$'
+ p1_win db 'Player 1 Wins','$'
+ p2_win db 'Player 2 Wins','$'
+ Draw   db 'It is A Draw','$'  
+ Turn1  db 'Player 1 Turn','$'
+ Turn2  db 'Player 2 Turn','$'
+ Exiting   db 'Exiting The Game','$'  
+ Goal1 db 'Player 1 Scored A Goal','$'
+ Goal2 db 'Player 2 Scored A Goal','$'
+ Save db 'The Keeper Saved The Ball','$'
+ Outside db 'The Ball is Out !','$'
+ FinalString db 30 dup('$')
  p1_name db 15, ?,  15 dup('$')
  p2_name db 15, ?,  15 dup('$')
-  
- p1_score db 0  ;Intially player 1 score is 0
- p2_score db 0  ;Intially player 2 score is 0
  
- GoalDim db 71, 3, 75, 11 ;X1,Y1, X2,Y2
+ RBCenterU   db 7
+ RBCenterD   db 8
+ p1_score db 0  			;Intially player 1 score is 0
+ p2_score db 0  			;Intially player 2 score is 0
+ GoalDim db 71, 3, 75, 11 	;X1,Y1, X2,Y2
  current_player db 1                        
- 
  Hr_Line_Color db 0c0h
  Goal_Color db 0c0h
  Goalkeeper_Color db 20h
  Player_Color db 02h
  Ball_Color db 0ch
- 
  Coordinate_BallCurve dw  0205h , 6     
-
+ 
  temp dw ? 
- Shoot_Key  db  1Ch; Enter scan code   
- 
- Total_Shoots db 1       ;inc until 10 (5 for each player)
-
- p1_win db 'Player 1 Wins','$'
- p2_win db 'Player 2 Wins','$'
- Draw   db 'It is A Draw','$'  
- 
- Turn1  db 'Player 1 Turn','$'
- Turn2  db 'Player 2 Turn','$'
- Exiting   db 'Exiting The Game','$'  
- 
- Goal1 db 'Player 1 Scored A Goal','$'
- Goal2 db 'Player 2 Scored A Goal','$'
- Save db 'The Keeper Saved The Ball','$'
- Outside db 'The Ball is Out !','$'
-
+ Shoot_Key  db  1Ch		 	;Enter scan code   
+ Total_Shoots db 1       	;inc until 10 (5 for each player)
  GameOver db 0     
  
- ver db ?         ;Last Vertical Ball Postion
- hor db 72        ;Last Horizontal Ball Postion
+ ver db ?         			;Last Vertical Ball Postion
+ hor db 72        			;Last Horizontal Ball Postion
  
- 
+;==================================================
 .CODE   
 MAIN    PROC   
     mov ax, @DATA
     mov ds, ax
-	
-	RestartProc:
-	mov ax, 0
-	CALL ResetAll
-    CALL GetNames 
-    CALL MainMenu   
-    CALL DrawInterface   
-    CALL DrawBottomSection
     
-    mov Ah,03h
+  RestartProc:				;Called to restart the game
+    mov ax, 0
+    
+    CALL ResetAll			;Resets positions and player names
+    CALL GetNames 			;Gets player names
+    CALL MainMenu   		;Displays the main menu
+    CALL DrawInterface   	;Draws the intial game interface
+    CALL DrawBottomSection	;Draws the in-game chat
+    
+    ;Wait for key from keyboard to shoot
+	mov Ah,03h
     int 10h    
     mov Bh, 00
     mov Cx, 01  
-
     mov ah,1
     mov cx,2b0bh
     int 10h 
-   
-   Print RBCenterU,70,Goalkeeper_Color     
-   Print RBCenterD,70,Goalkeeper_Color 
-   
-    
-    
-    
 
-;Wait for key from keyboard to shoot
-    
  CHECK:
-    call Delay
+    call Delay				
     call Delay 
 	Call Write_P1_P2		;Draw + sign and p1 or p2 based on the current_player byte
  
@@ -352,8 +339,8 @@ Shoot:
 	cmp GameOver, 0
     JE CHECK_1 
     call delay
-	call GameOverMenu
-    jmp RestartProc
+	call GameOverMenu				;When game is over, display Gameover menu
+    jmp RestartProc					;If didn't call Exit, jump to Restart the game
 	
 Exit: 
     ClearScreen
@@ -361,45 +348,52 @@ Exit:
     int 21H    
 
 
-MAIN        ENDP    
+MAIN        ENDP 
+   
+;==================================================
+; Move procedure moves the goal keeper and is called when a key is pressed
+; The goalkeeper is a two colored charachters on top of each other
+; Move procedure directs the action depending on the key press
+; possible actions are only up or down or no action
 
 Move PROC
    RightU:
     CMP Ah,48h
-    JNE RightD    
-    Call RightUp
+    JNE RightD    						; If the up arrow is not pressed jump to RightD
+    Call RightUp						; If pressed, Call RightUp Procedure
    RightD:    
-    CMP Ah,50h
-    JNE ENDD       
-    CALL RightDown
+    CMP Ah,50h			
+    JNE ENDD            				; If the down arrow is not pressed jump to ENDD
+    CALL RightDown						; If pressed, Call RightDown
    ENDD:ret
 Move ENDP    
-
+;--------------------------
 RightUp PROC
    
-    cmp RBCenterU,0
-    JE ENDRU
+    cmp RBCenterU,0						;Check if the goalkeeper is at the very top of screen
+    JE ENDRU							;if yes, end the procedure (no action)
      
-    dec RBCenterU
-    print RBCenterU,70,Goalkeeper_Color
-    Delete RBCenterD,70 
-    DEC RBCenterD
+    dec RBCenterU						;Decrement Column of the upper charachter so you go up 
+    print RBCenterU,70,Goalkeeper_Color	;Print the new coordinates
+    Delete RBCenterD,70 				;delete the other (third) charachter at the bottom
+    DEC RBCenterD						;Decrement Column of the lower charachter but don't print
    
     ENDRU:ret
 RightUp ENDP
-
+;--------------------------
 RightDown PROC
-    cmp RBCenterD,13
-    JE ENDRD
+    cmp RBCenterD,13					;Check if the goalkeeper is at the top of the chat screen
+    JE ENDRD							;if yes, end the procedure (no action)
     
-    inc RBCenterD
-    print RBCenterD,70,Goalkeeper_Color 
-    Delete RBCenterU,70 
-    INC RBCenterU
+    inc RBCenterD						;increment Column of the lower charachter so you go down 
+    print RBCenterD,70,Goalkeeper_Color ;Print the new coordinates
+    Delete RBCenterU,70 				;delete the other (third) charachter at the top
+    INC RBCenterU						;increment Column of the upper charachter but don't print
    
     ENDRD:ret
 RightDown ENDP
 
+;==================================================
 GetNames    PROC  
     push ax
     push bx
@@ -496,6 +490,7 @@ GetNames    PROC
     RET
      
 GetNames    ENDP
+;==================================================
 
 DrawInterface   PROC
     
@@ -557,7 +552,10 @@ DrawInterface   PROC
 			dec bl
 			cmp cl, bl        
         JNE loop2 
-        
+		
+		;Draw the goal keeper in the intial position
+		Print RBCenterU,70,Goalkeeper_Color     
+		Print RBCenterD,70,Goalkeeper_Color 
     pop ds
     pop dx
     pop cx
@@ -567,6 +565,7 @@ DrawInterface   PROC
     RET                
                     
 DrawInterface   ENDP
+;==================================================
 
 ClearLine	Proc
 	
@@ -599,6 +598,7 @@ ClearLine	Proc
 	
 	RET
 ClearLine	ENDP
+;==================================================
 
 DrawBottomSection PROC
     push ax
@@ -726,6 +726,7 @@ DrawBottomSection PROC
     RET
 
 DrawBottomSection ENDP 
+;==================================================
 
 Delay  PROC
     
@@ -749,6 +750,7 @@ Delay  PROC
     
     RET
 Delay  ENDP
+;==================================================
 
 DrawBall PROC
 
@@ -772,6 +774,7 @@ DrawBall PROC
 
 	RET
 DrawBall ENDP
+;==================================================
 
 Write_P1_P2 PROC
 	push ax
@@ -852,6 +855,7 @@ Write_P1_P2 PROC
 	
 	RET
 Write_P1_P2 ENDP
+;==================================================
 
 ChangeScore PROC   ;taken from write in fifth of screen
     
@@ -905,6 +909,7 @@ ChangeScore PROC   ;taken from write in fifth of screen
 	
     RET
 ChangeScore ENDP 
+;==================================================
 
 CheckScores PROC
 	mov AX,DS
@@ -1122,6 +1127,7 @@ CheckScores PROC
 	
 	RET
 CheckScores ENDP 
+;==================================================
 
 MainMenu Proc
     
@@ -1185,6 +1191,12 @@ MainMenu Proc
         pop ax 
         RET
 MainMenu ENDP
+;==================================================
+; GameOver procedure called when the game is over
+; The String the displays who won is displayed
+; The user has two options:
+; 1- To restart the game
+; 2- To exit the game
 
 GameOverMenu Proc
     
@@ -1204,9 +1216,11 @@ GameOverMenu Proc
     mov dx, 184fh
     int 10h
     
-    
+	;print who won
     PrintText 10,30,GameIsOver
 	PrintText 11,30,FinalString
+	
+	;Print the options the user has
     PrintText 13,30,Restart
     PrintText 14,30,EndGame  
     
@@ -1242,30 +1256,43 @@ GameOverMenu Proc
         pop ax 
         RET
 GameOverMenu ENDP
+;==================================================
+; ResetAll procedure is really needed when restart is called
+; The procedure is called at the beginning of the game
+; The procedure does the following:
+; 1- clears the players' names string
+; 2- resets the scores to zeros
+; 3- resets the position of the goalkeeper
+; 4- resets the postion of the ball
+; 5-resets the turn of current players and total number of shoots
 
 ResetAll Proc
 	mov AX,DS
     mov ES,AX  
 	
+	;resets scores to zeros
 	mov ax,0
-	mov p1_score, al  ;Intially player 1 score is 0
-	mov p2_score, al  ;Intially player 2 score is 0
+	mov p1_score, al  
+	mov p2_score, al  
 	mov GameOver, al 
 	
+	;resets the turn of current players and total number of shoots
 	mov bl,1
 	mov current_player,bl
 	mov Total_Shoots,bl
 	
-	mov bl,7			;Goalkeeper reset position
+	;Goalkeeper reset position
+	mov bl,7			
 	mov RBCenterU,bl
-	
-	mov bl,8			;Goalkeeper reset position
+	mov bl,8			
 	mov RBCenterD,bl
 	
+	;Last Horizontal Ball Postion
 	mov bl,72
-	mov hor,bl          ;Last Horizontal Ball Postion
- 
-	mov dl,'$'			;Clear players' names
+	mov hor,bl         
+	
+	;Clear players' names
+	mov dl,'$'			
 	mov cx,30
 	CLD
 	ClearNames:     
