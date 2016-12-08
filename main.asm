@@ -29,9 +29,7 @@ include macros.inc
 	db '              ====================================================',0ah,0dh
 	db '$',0ah,0dh
 	
-	GameEnd db ' ',0ah,0dh
-	db ' ',0ah,0dh
-	db '			*    GAMEOVER      *  		       ',0ah,0dh
+	GameEnd db '        		 *    GAMEOVER      *  		       ',0ah,0dh
 	db '              ====================================================',0ah,0dh     
 	db '             ||            Press 1 to restart the game           ||',0ah,0dh
 	db '             ||            Press ESC to Exit                     ||',0ah,0dh
@@ -578,10 +576,7 @@ DrawInterface   PROC
 			dec bl
 			cmp cl, bl        
         JNE loop2 
-		
-		;Draw the goal keeper in the intial position
-		Print RBCenterU,70,Goalkeeper_Color     
-		Print RBCenterD,70,Goalkeeper_Color 
+        
     pop ds
     pop dx
     pop cx
@@ -650,15 +645,46 @@ DrawBottomSection PROC
         cmp cl, 80
     jne loop3
     
-    ;Move to the next line
+	Call PrintScores
+    
+    ;Draw Horizontal Line
+    mov cx, 0
+    
+    loop6:               
+        push cx
+        Print 17, cl, Hr_Line_Color      
+        pop cx
+        inc cl
+        cmp cl, 80
+    jne loop6
+    
+    pop ds
+    pop dx
+    pop cx
+    pop bx
+    pop ax 
+    
+    RET
+
+DrawBottomSection ENDP 
+;==================================================
+
+PrintScores	Proc
+	
+	push ax
+    push bx
+    push cx
+    push dx
+    push ds
+	
+	;Move cursor to the scores line
     
     mov ah, 2      
     mov dl, 0 ;Move to position X=0
     mov dh, 16 ;Move to position Y=16
     int 10h 
-    
-    
-    ;Writing players' names and scores
+	
+	;Writing players' names and scores
     
     ;Player 1 Info  
     
@@ -730,28 +756,15 @@ DrawBottomSection PROC
     mov ah, 2
     mov dl, bl
     int 21h  
-    
-        
-    ;Draw Horizontal Line
-    mov cx, 0
-    
-    loop6:               
-        push cx
-        Print 17, cl, Hr_Line_Color      
-        pop cx
-        inc cl
-        cmp cl, 80
-    jne loop6
-    
-    pop ds
+
+	pop ds
     pop dx
     pop cx
     pop bx
-    pop ax 
-    
-    RET
-
-DrawBottomSection ENDP 
+    pop ax
+	
+	RET
+PrintScores	ENDP
 ;==================================================
 
 Delay  PROC
@@ -883,60 +896,6 @@ Write_P1_P2 PROC
 Write_P1_P2 ENDP
 ;==================================================
 
-ChangeScore PROC   ;taken from write in fifth of screen ;Update the Score Every Shoot
-    
-	push ax
-	push bx
-	push cx
-	push dx
-	
-    mov ah, 2
-    mov bh,0      
-    mov dl, 0 			;Move to position X=0
-    mov dh, 16 			;Move to position Y=16
-    int 10h 
-    
-    
-    ;Writing players' names and scores
-    
-    ;Player 1 Info  
-    
-   ;Move to write player 2 info
-    mov ah, 2
-    mov bh,0      
-    mov dh, 16 			;Move to position Y=16 
-    mov dl, p1_name[1] 
-    inc dl
-    int 10h
-	
-    mov bl, p1_score
-    add bl, '0'
-    mov ah, 2
-    mov dl, bl
-    int 21h
-    
-    ;Move to write player 2 info
-    mov ah, 2
-    mov bh,0      
-    mov dh, 16 			;Move to position Y=16 
-    mov dl, 79 
-    int 10h
-               
-    mov bl, p2_score
-    add bl, '0'
-    mov ah, 2
-    mov dl, bl
-    int 21h  
-    
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	
-    RET
-ChangeScore ENDP 
-;==================================================
-
 CheckScores PROC			;Check The Ball Position
 	mov AX,DS
     	mov ES,AX   
@@ -1057,7 +1016,7 @@ CheckScores PROC			;Check The Ball Position
    Final: 
       Delete ver , hor
       call Delay                     
-      call ChangeScore  
+      call PrintScores  
       
       cmp Total_Shoots,10		;check if each player done the 5 shoots
       JE Result
