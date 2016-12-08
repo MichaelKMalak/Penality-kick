@@ -6,14 +6,9 @@
 ;;                 1-Michael Khalil Malak                                      ;;
 ;;                 2-Bassel Akmal Elerian                                      ;;
 ;;                 3-Fady Nasser Fawzy                                         ;;
-;;                 4-Kirolos Diaa	                                       ;;
+;;                 4-Kerelos Diaa	                                       ;;
 ;;=============================================================================;;
-;;=============================================================================;;
-;;         Use up and down arrows to move goalkeeper bar   		       ;;
-;;                Press enter button to shoot the ball  		       ;;
-;;                Press the ECS button to Exit the game 		       ;;
-;;=============================================================================;;
-            
+
 include macros.inc
 
 .MODEL SMALL
@@ -185,7 +180,7 @@ MAIN    PROC
        Call Delay
        
        pop dx
-       mov si,dx    
+       mov si,dx   ;keep the position of the ball in SI in case a player shoots it 
        ;To clear the last 'o'       
        mov ah,2
        mov dx,si
@@ -198,7 +193,7 @@ MAIN    PROC
        inc bl
          
        MOV AH,1             	  ;Get key pressed
-       INT 16H  
+       INT 16H  		  ;ZF=1-->NO KEY ,,, ZF=0-->KEY AVAILABLE
    
        JNE Key_Pressed1
        JMP NO_Key_Pressed1       
@@ -264,7 +259,7 @@ MAIN    PROC
         inc bl     
         
         MOV AH,1              		;Get key pressed
-        INT 16H  
+        INT 16H  			;ZF=1-->NO KEY ,,, ZF=0-->KEY AVAILABLE
         
         JNE Key_Pressed2
         JMP NO_Key_Pressed2               
@@ -273,7 +268,12 @@ MAIN    PROC
         MOV AH,0             		;clear used scan code from buffer
         INT 16H  
         cmp ah,Shoot_Key   
-        JE Shoot     
+        JE Shoot 
+	 jmp Continuechecking
+        CHECK_1:
+        JMP CHECK       
+       
+       Continuechecking:
         cmp ah,1H                  	;Esc to terminate the Game
         JE Exit
 		
@@ -288,8 +288,7 @@ MAIN    PROC
         pop cx
         pop bx
         pop ax
-CHECK_1:
-JMP CHECK               
+       
     NO_Key_Pressed2:    
                      
     loop SecondHalfCycle
