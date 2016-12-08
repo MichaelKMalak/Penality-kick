@@ -29,13 +29,13 @@ include macros.inc
 	db '              ====================================================',0ah,0dh
 	db '$',0ah,0dh
 	
-	GameEnd db '         		   *    GAMEOVER      *  		       ',0ah,0dh
-	db '              ====================================================',0ah,0dh        
-	db '             ||               Press 1 to restart	    ||',0ah,0dh
-	db '             ||               Press ESC to Exit                  ||',0ah,0dh
-	db '             ||                                                  ||',0ah,0dh
-	db '             ====================================================',0ah,0dh
+	GameEnd db '         *    GAMEOVER      *  		       ',0ah,0dh
+	db '              ====================================================',0ah,0dh     
+	db '             ||            Press 1 to restart the game           ||',0ah,0dh
+	db '             ||            Press ESC to Exit                     ||',0ah,0dh
+	db '              ====================================================',0ah,0dh
 	db '$',0ah,0dh
+	
 	
  ask_p1_name db 'Player 1 Name: ','$'
  ask_p2_name db 'Player 2 Name: ','$'
