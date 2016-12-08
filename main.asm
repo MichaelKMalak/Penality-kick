@@ -2,6 +2,12 @@
 ;;                 Multiplayer Penality shooting game                          ;;
 ;;                 Tested on DOSBox and emu8086                                ;;
 ;;=============================================================================;;
+;;         Developed by:                         			       ;;
+;;                 1-Michael Khalil Malak                                      ;;
+;;                 2-Bassel Akmal Elerian                                      ;;
+;;                 3-Fady Nasser Fawzy                                         ;;
+;;                 4-Kirolos Diaa	                                       ;;
+;;=============================================================================;;
 
 include macros.inc
 
