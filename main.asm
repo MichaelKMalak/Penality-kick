@@ -29,7 +29,9 @@ include macros.inc
 	db '              ====================================================',0ah,0dh
 	db '$',0ah,0dh
 	
-	GameEnd db '        		 *    GAMEOVER      *  		       ',0ah,0dh
+	GameEnd db ' ',0ah,0dh
+	db ' ',0ah,0dh
+	db '			*    GAMEOVER      *  		       ',0ah,0dh
 	db '              ====================================================',0ah,0dh     
 	db '             ||            Press 1 to restart the game           ||',0ah,0dh
 	db '             ||            Press ESC to Exit                     ||',0ah,0dh
