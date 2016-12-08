@@ -8,15 +8,40 @@ include macros.inc
 .MODEL SMALL
 .STACK 64    
 .DATA  
-
- Chat db 'To start chatting press 1','$'
- Play db 'To start Penality Game press 2','$'
+ 	GameStart db '  ',0ah,0dh
+	db '                ====================================================',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh                                        
+	db '               ||       *    Penality Shooting Game      *         ||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh
+	db '               ||--------------------------------------------------||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh          
+	db '               ||     Use up and down key to move goalkeeper bar   ||',0ah,0dh
+	db '               ||          and enter button to shoot               ||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh
+	db '               ||            Two players switch every turn         ||',0ah,0dh
+	db '               ||            Each player Shoots 5 times            ||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh
+	db '               ||            Press 2 to start playing              ||',0ah,0dh 
+	db '               ||            Press 1 to start chatting             ||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh
+	db '               ||            Press ESC to Exit                     ||',0ah,0dh
+	db '                ====================================================',0ah,0dh
+	db '$',0ah,0dh
+	
+	GameEnd db '  ',0ah,0dh
+                                
+	db '               		 *    GAMEOVER      *  		       ',0ah,0dh
+	db '                ====================================================',0ah,0dh        
+	db '               ||               Press 1 to restart		    ||',0ah,0dh
+	db '               ||               Press ESC to Exit                  ||',0ah,0dh
+	db '               ||                                                  ||',0ah,0dh
+	db '                ====================================================',0ah,0dh
+	db '$',0ah,0dh
  ask_p1_name db 'Player 1 Name: ','$'
  ask_p2_name db 'Player 2 Name: ','$'
  score_msg db "'s score:$"
- EndGame db 'To end the game press ESC','$' 
- GameIsOver db 'Gameover.','$'
- Restart db 'To restart game press 1','$'
  p1_win db 'Player 1 Wins','$'
  p2_win db 'Player 2 Wins','$'
  Draw   db 'It is A Draw','$'  
@@ -1152,9 +1177,7 @@ MainMenu Proc
     
     
     ;Printing the Menu Selections by setting course and use the Macro
-    PrintText 10,30,Chat
-    PrintText 11,30,Play
-    PrintText 12,30,EndGame  
+    PrintText 0,0,GameStart
     
     mov ch,0
     mov cl,0 
@@ -1165,7 +1188,7 @@ MainMenu Proc
         inc cl
         cmp cl, 80
         JNE MM
-    
+    checkforinput1:
     mov AH,0            		 ;clear used scan code from buffer
     int 16H 
     
@@ -1180,7 +1203,7 @@ MainMenu Proc
     
     cmp ah,1H                 		 ;Esc to exit the game
     JE ExitMain
-    
+    JNE checkforinput1
     
     ExitMain:
         mov ah,4CH
@@ -1220,14 +1243,13 @@ GameOverMenu Proc
     mov dx, 184fh
     int 10h
     
-    ;print who won
-    PrintText 10,30,GameIsOver
-    PrintText 11,30,FinalString
+
+	;Print the options the user has
+    PrintText 0,0,GameEnd
 	
-    ;Print the options the user has
-    PrintText 13,30,Restart
-    PrintText 14,30,EndGame  
-    
+	;print who won
+    PrintText 13,32,FinalString
+	
     mov ch,0
     mov cl,0 
     RM:  
@@ -1237,7 +1259,7 @@ GameOverMenu Proc
         inc cl
         cmp cl, 80
         JNE RM
-    
+    checkforinput2:
     mov AH,0             	  ;clear used scan code from buffer
     int 16H 
     
@@ -1246,7 +1268,7 @@ GameOverMenu Proc
     
     cmp ah,1H                  ;Esc
     JE ExitMenu
-    
+    JNE checkforinput2
     
     ExitMenu:
         mov ah,4CH
