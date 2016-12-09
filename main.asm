@@ -58,9 +58,9 @@ include macros.inc
  Goal2 db 'Player 2 Scored A Goal','$'
  Save db 'The Keeper Saved The Ball','$'
  Outside db 'The Ball is Out !','$'
- FinalString db 30 dup('$')
- p1_name db 15, ?,  15 dup('$')
- p2_name db 15, ?,  15 dup('$')
+ FinalString db 16 dup('$')
+ p1_name db 16, ?,  16 dup('$')
+ p2_name db 16, ?,  16 dup('$')
  
  RBCenterU   db 7
  RBCenterD   db 8
@@ -1269,7 +1269,7 @@ GameOverMenu ENDP
 
 ResetAll Proc
 	mov AX,DS
-    mov ES,AX  
+    	mov ES,AX  
 	
 	;resets scores to zeros
 	mov ax,0
@@ -1292,13 +1292,17 @@ ResetAll Proc
 	mov bl,72
 	mov hor,bl         
 	
+	;Reset the actual length of players' names
+	mov p1_name[1], 0
+	mov p2_name[1], 0
 	;Clear players' names
 	mov dl,'$'			
-	mov cx,30
+	mov cx,16
 	CLD
+	
 	ClearNames:     
-	mov si,offset p1_name
-	mov di,offset p2_name
+	mov si,offset p1_name[2]
+	mov di,offset p2_name[2]
 	mov bx,offset FinalString
 	mov [si],dl
 	mov [di],dl
