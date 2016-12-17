@@ -76,6 +76,7 @@ ShiftCursorMy MACRO
 ENDM ShiftCursorMy    
 ;----------------------------
 ShiftCursorChat MACRO 
+	LOCAL getOutChat
    push ax
              
           inc ChatCol
@@ -188,26 +189,44 @@ ENDM AddSentToBuffer
     intialChatRow     	equ 8				;25>intialChatRow>intialMyRow>0
     
 	MyName 				db  'Player 1: ','$'
-	OpponentName 		db  'Player 1: ','$'
+	OpponentName 		db  'Player 2: ','$'
 	
-	ComputerNumber		db  1				;always equal 1 (only equals two when: FirstTimeToSend=0 && FirstTimeToRecieve=1)	
-	FirstTimeToSend		db	0	
-	FirstTimeToRecieve	db	0		
+	write_status		db	?	;if 1=> I'm sending text, if 0=> I'm receiving text
+	
+											;****************************;
+											;***** Module Variables *****;							 
+											;****************************;
+								;*****************************************************;
+	invited db 0	;if there is a pending invitation value will be 1, otherwise it's 0
+	chat_host db 0	;if Player 1 is the host it will be 1, if player 2 is the host it will be 2, otherwise it is 0
+  
+	invitation_key db 88h	;the key sent to the other player indicating a chat invitation
+	accept_key db 11h		;the key if sent, the invitation is accepted
+	refuse_key db 00h		;the key if sent, the invitation is rejected/refused
+	
+	invitation_msg db 'You have a pending chat invitation. Do you want to accept it? y or n$'
+	instruction_msg db 'To send a chat invitation click on F2.$'
+								;*****************************************************;
 	
         .CODE
     MAIN PROC 
          MOV AX,@DATA
          MOV DS,AX
-         
+         MOV AX,0
+		 
          ClearScreen 		 
-         call ColorScreen
+         call Intialize_Port
+		 
+		 call InvitationModule	;Before starting the main program, we will handle the invitations first to be like a separate module from the program itself.
+		 
+		 call ColorScreen
 
          mov MyRow,intialMyRow
          mov ChatRow,intialChatRow
          
          SetCursor MyRow, MyCol
          PrintHorizontalLine intialMyRow, MyAtt ;Draws a line on the row defined in al
-         call IntializeCOM 
+          
 
     Again:     
           
@@ -217,19 +236,11 @@ ENDM AddSentToBuffer
            test al,1
            JZ send
            
-		   cmp FirstTimeToRecieve, 00
-		   jnz Chatting
-		   mov al, 1
-		   mov FirstTimeToRecieve, al
-				cmp FirstTimeToSend, 00
-				jnz Chatting
-					mov al, 2
-					mov ComputerNumber, al
-		   Chatting:
+		   
            mov dx, 03f8h
            in  al,dx 
            mov GetChar,al
-           
+           mov write_status, 0
            call writeChatScreen          
           
           send:
@@ -241,7 +252,7 @@ ENDM AddSentToBuffer
            int 16h
            
            mov ToSendChar, al
-           
+           mov write_status, 1
            cmp ah,1
            jnz noEsc
              
@@ -255,7 +266,6 @@ ENDM AddSentToBuffer
                jz  Again  
                
                call SendOperation
-			   mov	FirstTimeToSend, 1
                mov MyRow, intialMyRow
                mov MyCol, 0
                call clearMyPart  
@@ -266,9 +276,7 @@ ENDM AddSentToBuffer
            cmp BufferSize, 78
            jz Again
            
-           call writeMyScreen 
-           
-                               
+           call writeMyScreen  
           
          Jmp Again 
          
@@ -280,29 +288,223 @@ ENDM AddSentToBuffer
 		 int 21h
          
 MAIN    ENDP   
+;*********************************************************************************************************************************************;
+
+												 ;**************************;
+												 ;****Invitations Module****;
+												 ;**************************;
+;**********************;
+;**** Module Start ****;							 
+;**********************;
+
+InvitationModule Proc
+push ax
+push bx
+push cx
+push dx
+push ds
+
+ClearScreen
+   
+   mov ah, 9
+   LEA dx, instruction_msg
+   int 21h
+   
+   mov ax, 0
+   mov bx, 0
+   mov cx, 0
+   mov dx, 0
+   Module_Loop:
+    
+	
+        Module_Check: 
+			call ModuleReceive
+			
+			cmp chat_host, 0
+			jnz END_InvitationModule
+            
+			mov ah, 1
+            int 16h
+			jz Module_Check
+		
+		mov ah, 0
+		int 16h  
+		cmp al, 27		;ESCAPE
+		jz ModuleEnd_Program
+		
+		cmp ah, 3Ch		;F2
+		jnz Module_Loop
+		
+		cmp chat_host, 0
+		jnz Module_Loop
+		cmp invited, 1
+		jz Module_Loop
+		
+		mov al, invitation_key
+		call ModuleSend
+		
+	jmp Module_Loop  
+	
+	jmp END_InvitationModule
+	ModuleEnd_Program:
+    
+	call Exit
+
+	END_InvitationModule:
+	ClearScreen
+	pop ds
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	RET
+InvitationModule ENDP
+
+ModuleSend Proc
+
+	push ax	;To save the character in al to send
+
+;Check that Transmitter Holding Register is Empty
+	mov dx , 3FDH		; Line Status Register
+	ModuleSend_Loop: 	In al , dx 			;Read Line Status
+		test al , 00100000b		;Checking Transmitter Holding Register bit 
+	JZ ModuleSend_Loop
+			
+	;Now the Transmitter Holding Register is Empty and ready to send a character
+	
+	mov dx , 3F8H		; Transmit data register
+	pop ax
+  	;Value is already in al
+  	out dx , al 
+		
+	END_ModuleSend:ret    
+ModuleSend Endp
+
+ModuleReceive Proc
+     ;Check that Data Ready
+	mov dx , 3FDH		; Line Status Register
+	in al , dx 
+  	test al , 1		;Checking Data Ready bit 
+  	
+	JZ END_ReceiveModule	;If not ready end
+
+	;If data ready, fetch the data
+  		mov dx , 03F8H
+  		in al , dx 
+		
+	cmp chat_host, 0
+	jnz END_ReceiveModule
+	
+	cmp al, invitation_key
+	jnz Receive_Continue1
+	;Invitation Received
+	
+		mov invited, 1
+		Call ReceivedInvitation
+	jmp END_ReceiveModule
+	
+	Receive_Continue1:
+	cmp invited, 0
+	jnz END_ReceiveModule
+	cmp al, accept_key
+	jnz Receive_Continue2
+	;Invitation Accepted
+	
+		mov chat_host, 1
+		mov invited, 0
+		
+	jmp END_ReceiveModule
+	Receive_Continue2:
+	cmp invited, 0
+	jnz END_ReceiveModule
+	cmp al, refuse_key
+	jnz END_ReceiveModule
+	;Invitation Refused
+	
+		mov chat_host, 0
+		mov invited, 0
+	
+	END_ReceiveModule:ret
+ModuleReceive Endp
+
+
+ReceivedInvitation	PROC
+	ClearScreen
+	mov ah, 9
+	LEA dx, invitation_msg
+	int 21h
+	
+	ReceivedInvitation_Again:
+	mov ah, 0
+	int 16h
+	
+	ReceivedInvitation_Check_Y:
+	cmp al, 'y'
+	jnz ReceivedInvitation_Check_N
+	;Accept Invitation
+	
+	mov al, accept_key
+	mov chat_host, 2
+	call ModuleSend
+	
+	jmp ReceivedInvitation_END
+	ReceivedInvitation_Check_N:
+	cmp al, 'n'
+	jnz ReceivedInvitation_Again
+	;Refuse Invitation
+	
+	mov al, refuse_key
+	call ModuleSend
+
+	mov invited, 0
+	ClearScreen
+	
+	ReceivedInvitation_END:
+	RET
+ReceivedInvitation	ENDP
+
+;**********************;
+;***** Module End *****;							 
+;**********************;
+
+;*********************************************************************************************************************************************;
+
+
+
+
+
         
 ;----------------------------             
         
-        IntializeCOM PROC 
-            
-            mov dx,3fbh
-            mov al,10000000b
-            out dx,al  
-            
-            mov al,0ch
-            mov dx,3f8h
-            out dx,al
-            
-            mov al,00h
-            mov dx,3f9h
-            out dx,al
-            
-            mov dx,3fbh
-            mov al,00011011b
-            out dx,al
-            
-            ret
-        IntializeCOM ENDP 
+Intialize_Port Proc
+	;Setting the divisor value (To get baud rate 9600 [Value of divisor=00 0ch])
+	mov dx,3fbh 			; Line Control Register
+	mov al,10000000b		;Set Divisor Latch Access Bit
+	out dx,al				;Out it
+	
+	;Setting the LSB (Least Significant Byte) to 0ch
+	mov dx,3f8h			
+	mov al,0ch			
+	out dx,al
+	
+	;Setting the MSB (Most Significant Byte) to 00h
+	mov dx,3f9h
+	mov al,00h
+	out dx,al
+	
+	;Port configuration
+	
+	mov dx,3fbh
+	mov al,00000011b
+	;(0xxxxxxx):Access to Receiver buffer, Transmitter buffer
+	;(x0xxxxxx):Set Break disabled
+	;(xx000xxx):No Parity
+	;(xxxxx0xx):One Stop Bit
+	;(xxxxxx11):Word size=8bits
+	out dx,al
+
+   ret 
+Intialize_Port Endp 
 
 ;----------------------------
       ColorScreen PROC 
@@ -314,7 +516,7 @@ MAIN    ENDP
            mov ah,7h        ;Scroll down
            mov al, 25
 		   sub al, intialChatRow	;number of lines to scroll   	
-           mov bh,ChatAtt   ;blanck lines at bottom of window
+           mov bh,ChatAtt   ;blank lines at bottom of window (Chat Section Color)
            mov ch,intialChatRow        ;row - window's upper left corner
            mov cl,0         ;column - window's upper left corner
            mov dh,25        ;row - window's lower right corner
@@ -358,46 +560,7 @@ MAIN    ENDP
            push bx
            push cx
            push dx
-           
-           ;send arrow after string
-           ;mov  al,16
-           ;mov  ToSendChar,al
-           ;call  SendOneChar
-           
-           ;mov  GetChar,al
-           ;call  writeChatScreen
-           cmp ComputerNumber, 1
-		   jnz FromComputer2
-		   
-		   mov  al,'1'
-           mov  ToSendChar,al
-		   mov  GetChar,al
-           call  SendOneChar
-		   
-		   mov  al,'1'
-		   mov  GetChar,al
-           call  writeChatScreen
-		   jmp TheMessage
-           FromComputer2:
-		   
-		   mov  al,'2'
-           mov  ToSendChar,al
-		   mov  GetChar,al
-           call  SendOneChar
-		   
-		   mov  al,'2'
-		   mov  GetChar,al
-           call  writeChatScreen
-		   
-		   TheMessage:
-		   mov  al,' '
-           mov  ToSendChar,al
-		   mov  GetChar,al
-           call  SendOneChar
-		   
-		   mov  al,' '
-		   mov  GetChar,al
-           call  writeChatScreen
+          
 		   
            mov ch,00h          
            mov cl, BufferSize
@@ -496,13 +659,6 @@ MAIN    ENDP
                 notbeg1:
                 dec MyCol
                 
-                ;Print space 
-                     push ax                       
-                     mov al,' '
-                     PrintCharAl MyRow,MyCol,myAtt   
-                     pop ax 
-                
-                
              push ax
              push bx    
              
@@ -538,7 +694,57 @@ MAIN    ENDP
             
             ret
         writeMyScreen ENDP
-;----------------------------         
+;----------------------------   
+		PrintP2	Proc
+		
+			push ax
+			
+			mov al, 'P'
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			mov al, '2'
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			mov al, ':'
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			mov al, ' '
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			pop ax
+			RET
+		PrintP2 ENDP
+;----------------------------   
+		PrintMe	Proc
+		
+			push ax
+			
+			mov al, 'M'
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			mov al, 'e'
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			mov al, ':'
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			mov al, ' '
+			PrintCharAl ChatRow,ChatCol,ChatAtt
+			ShiftCursorChat
+			
+			pop ax
+			RET
+		PrintMe ENDP
+;---------------------------- 
+ 
+
         writeChatScreen PROC                       
             
            push ax
@@ -547,8 +753,18 @@ MAIN    ENDP
            push dx
              
             SetCursor ChatRow,ChatCol
-           
-            
+			cmp ChatCol, 0
+			jnz continue_writeChatScreen
+			
+			cmp write_status, 1
+			jnz Print_P2
+			call PrintMe
+			jmp continue_writeChatScreen
+			Print_P2:
+			call PrintP2
+			
+			continue_writeChatScreen:
+           ;;;;; CHECK ENTER ;;;;; 
            ;;;;; CHECK ENTER ;;;;; 
             mov al, GetChar 
             cmp al,0Dh
@@ -562,24 +778,14 @@ MAIN    ENDP
                 dec ChatRow
                      
              dec ChatCol
-                    ;Print space 
-                     push ax                       
-                     mov al,' '
-                     PrintCharAl ChatRow,ChatCol,ChatAtt   
-                     pop ax    
                       
-           writeChatScreen_End:
-           pop dx
-           pop cx
-           pop bx
-           pop ax
-
-            ret
+           
          writeChatScreen_Continue1: 
 
              PrintCharAl ChatRow,ChatCol,ChatAtt
              ShiftCursorChat   
-            
+           
+		writeChatScreen_End:		   
            pop dx
            pop cx
            pop bx
@@ -610,5 +816,3 @@ MAIN    ENDP
 
          
 END MAIN
-        
-        
