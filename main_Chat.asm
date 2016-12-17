@@ -201,7 +201,7 @@ ENDM AddSentToBuffer
 	game_invited db 0
 	chat_host db 0	;if Player 1 is the host it will be 1, if player 2 is the host it will be 2, otherwise it is 0
 	
-	game_host db 0
+	game_host db 0	;if Player 1 is the host it will be 1, if player 2 is the host it will be 2, otherwise it is 0
 	
 	chat_invitation_key db 88h	;the key sent to the other player indicating a chat invitation
 	game_invitation_key db 99h
@@ -683,13 +683,14 @@ Intialize_Port Endp
                 cmp MyCol,0
                 jnz notbeg1
                 
-                  cmp MyRow, 0
+                  cmp MyRow, intialMyRow
                   jnz notbeg1
-                   jmp writeMyScreen_End
+                  jmp endbck1
                   
                 notbeg1:
                 dec MyCol
-                
+                mov al, ' '
+				PrintCharAl MyRow, MyCol, myAtt
              push ax
              push bx    
              
@@ -711,7 +712,9 @@ Intialize_Port Endp
            writeMyScreen_Continue2: 
             ;;;;; 
              
-             
+             cmp BufferSize, 77
+			 jz writeMyScreen_End
+			 
              PrintCharAl MyRow,MyCol,myAtt
              ShiftCursorMy   
              AddSentToBuffer   
