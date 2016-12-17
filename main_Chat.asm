@@ -188,8 +188,8 @@ ENDM AddSentToBuffer
     intialMyRow       	equ 7				;not zero (bec of instrcution)
     intialChatRow     	equ 8				;25>intialChatRow>intialMyRow>0
     
-	MyName 				db  'Player 1: ','$'
-	OpponentName 		db  'Player 2: ','$'
+	MyName 				db  'Player 1','$'
+	OpponentName 		db  'Player 2','$'
 	
 	write_status		db	?	;if 1=> I'm sending text, if 0=> I'm receiving text
 	
@@ -197,15 +197,25 @@ ENDM AddSentToBuffer
 											;***** Module Variables *****;							 
 											;****************************;
 								;*****************************************************;
-	invited db 0	;if there is a pending invitation value will be 1, otherwise it's 0
+	chat_invited db 0	;if there is a pending invitation value will be 1, otherwise it's 0
+	game_invited db 0
 	chat_host db 0	;if Player 1 is the host it will be 1, if player 2 is the host it will be 2, otherwise it is 0
-  
-	invitation_key db 88h	;the key sent to the other player indicating a chat invitation
+	
+	game_host db 0
+	
+	chat_invitation_key db 88h	;the key sent to the other player indicating a chat invitation
+	game_invitation_key db 99h
+	
 	accept_key db 11h		;the key if sent, the invitation is accepted
 	refuse_key db 00h		;the key if sent, the invitation is rejected/refused
 	
-	invitation_msg db 'You have a pending chat invitation. Do you want to accept it? y or n$'
-	instruction_msg db 'To send a chat invitation click on F2.$'
+	invitation_type  db 0	;it's 1 if a chat invitation, And 2 if a game invitation
+	
+	chat_invitation_msg db 'You have a pending chat invitation. Do you want to accept it? y or n$'
+	game_invitation_msg db 'You have a pending game invitation. Do you want to accept it? y or n$'
+	
+	chat_instruction_msg db 'To send a chat invitation click on F2.$'
+	game_instruction_msg db 'To send a game invitation click on F3.$'
 								;*****************************************************;
 	
         .CODE
@@ -219,73 +229,19 @@ ENDM AddSentToBuffer
 		 
 		 call InvitationModule	;Before starting the main program, we will handle the invitations first to be like a separate module from the program itself.
 		 
-		 call ColorScreen
-
-         mov MyRow,intialMyRow
-         mov ChatRow,intialChatRow
-         
-         SetCursor MyRow, MyCol
-         PrintHorizontalLine intialMyRow, MyAtt ;Draws a line on the row defined in al
-          
-
-    Again:     
-          
-          get:
-           mov  dx, 3FDH            
-           in   al,dx
-           test al,1
-           JZ send
-           
-		   
-           mov dx, 03f8h
-           in  al,dx 
-           mov GetChar,al
-           mov write_status, 0
-           call writeChatScreen          
-          
-          send:
-           mov ah,01h
-           int 16h
-           JZ get
-           
-           mov ah,00
-           int 16h
-           
-           mov ToSendChar, al
-           mov write_status, 1
-           cmp ah,1
-           jnz noEsc
-             
-           call Exit
-           noEsc:
-
-           cmp al,0Dh
-           jnz noEnter
-               
-               cmp BufferSize,0
-               jz  Again  
-               
-               call SendOperation
-               mov MyRow, intialMyRow
-               mov MyCol, 0
-               call clearMyPart  
-               
-               jmp Again
-           noEnter:
-           
-           cmp BufferSize, 78
-           jz Again
-           
-           call writeMyScreen  
-          
-         Jmp Again 
-         
-         
-         call Exit
-         
-         
-         mov ah, 4ch
-		 int 21h
+		 cmp game_host, 0
+		 jz start_chat
+		 ;Start Game
+		 
+		 Call StartGame
+		 
+		 start_chat:
+		;Start Chat
+		
+		Call StartChat
+		
+		mov ah, 4ch
+		int 21h
          
 MAIN    ENDP   
 ;*********************************************************************************************************************************************;
@@ -306,9 +262,16 @@ push ds
 
 ClearScreen
    
-   mov ah, 9
-   LEA dx, instruction_msg
+   PrintStr chat_instruction_msg
+   
+   mov ah, 2
+   mov dl, 10
    int 21h
+   mov ah, 2
+   mov dl, 13
+   int 21h
+   
+   PrintStr game_instruction_msg
    
    mov ax, 0
    mov bx, 0
@@ -316,13 +279,15 @@ ClearScreen
    mov dx, 0
    Module_Loop:
     
-	
         Module_Check: 
 			call ModuleReceive
 			
 			cmp chat_host, 0
 			jnz END_InvitationModule
-            
+			
+            cmp game_host, 0
+			jnz END_InvitationModule
+			
 			mov ah, 1
             int 16h
 			jz Module_Check
@@ -333,14 +298,23 @@ ClearScreen
 		jz ModuleEnd_Program
 		
 		cmp ah, 3Ch		;F2
-		jnz Module_Loop
+		jnz Module_Check_F3
 		
+		;Chat Invitation
 		cmp chat_host, 0
 		jnz Module_Loop
-		cmp invited, 1
+		cmp chat_invited, 1
 		jz Module_Loop
+		mov al, chat_invitation_key
+		mov invitation_type, 1
+		call ModuleSend
+		jmp Module_Loop
 		
-		mov al, invitation_key
+		Module_Check_F3:
+		cmp ah, 3Dh
+		jnz Module_Loop
+		mov al, game_invitation_key
+		mov invitation_type, 2
 		call ModuleSend
 		
 	jmp Module_Loop  
@@ -386,53 +360,89 @@ ModuleReceive Proc
 	in al , dx 
   	test al , 1		;Checking Data Ready bit 
   	
-	JZ END_ReceiveModule	;If not ready end
+	JZ END_ReceiveModule1	;If not ready end
 
 	;If data ready, fetch the data
   		mov dx , 03F8H
   		in al , dx 
 		
 	cmp chat_host, 0
-	jnz END_ReceiveModule
+	jnz END_ReceiveModule1
 	
-	cmp al, invitation_key
+	cmp game_host, 0
+	jnz END_ReceiveModule1
+	
+	cmp al, chat_invitation_key
 	jnz Receive_Continue1
-	;Invitation Received
+	;Chat Invitation Received
 	
-		mov invited, 1
+		mov chat_invited, 1
 		Call ReceivedInvitation
-	jmp END_ReceiveModule
+	jmp END_ReceiveModule1
 	
 	Receive_Continue1:
-	cmp invited, 0
-	jnz END_ReceiveModule
-	cmp al, accept_key
+	cmp al, game_invitation_key
 	jnz Receive_Continue2
-	;Invitation Accepted
+	;Game Invitation Received
 	
-		mov chat_host, 1
-		mov invited, 0
+		mov game_invited, 1
+		Call ReceivedInvitation
 		
-	jmp END_ReceiveModule
+	END_ReceiveModule1:ret
+	
 	Receive_Continue2:
-	cmp invited, 0
-	jnz END_ReceiveModule
+	cmp al, accept_key
+	jnz Receive_Continue3
+	;Invitation Accepted
+		
+		cmp invitation_type, 1
+		jnz check_game_invitation
+		;Chat Invitation
+		
+		mov chat_host, 1
+		mov chat_invited, 0
+		mov invitation_type, 0
+		
+		check_game_invitation:
+		cmp invitation_type, 2
+		jnz END_ReceiveModule2
+		;Game Invitation
+		
+		mov game_host, 1
+		mov game_invited, 0
+		mov invitation_type, 0
+		
+	jmp END_ReceiveModule2
+	Receive_Continue3:
+	cmp chat_invited, 0
+	jnz END_ReceiveModule2
 	cmp al, refuse_key
-	jnz END_ReceiveModule
+	jnz END_ReceiveModule2
 	;Invitation Refused
 	
 		mov chat_host, 0
-		mov invited, 0
+		mov chat_invited, 0
+		mov invitation_type, 0
 	
-	END_ReceiveModule:ret
+	END_ReceiveModule2:ret
 ModuleReceive Endp
 
 
 ReceivedInvitation	PROC
 	ClearScreen
-	mov ah, 9
-	LEA dx, invitation_msg
-	int 21h
+	
+	cmp game_invited, 1
+	jz Game_Invitation_Received
+	
+	Chat_Invitation_Received:
+	PrintStr chat_invitation_msg
+	jmp ReceivedInvitation_Continue1
+	
+	Game_Invitation_Received:
+	PrintStr game_invitation_msg
+	
+	ReceivedInvitation_Continue1:
+	
 	
 	ReceivedInvitation_Again:
 	mov ah, 0
@@ -444,7 +454,17 @@ ReceivedInvitation	PROC
 	;Accept Invitation
 	
 	mov al, accept_key
+	cmp game_invited, 1
+	jnz accept_chat
+	
+	accept_game:
+	mov game_host, 2
+	jmp ReceivedInvitation_Continue2
+	
+	accept_chat:
 	mov chat_host, 2
+	
+	ReceivedInvitation_Continue2:
 	call ModuleSend
 	
 	jmp ReceivedInvitation_END
@@ -454,10 +474,21 @@ ReceivedInvitation	PROC
 	;Refuse Invitation
 	
 	mov al, refuse_key
+	cmp game_invited, 1
+	jnz refuse_chat
+	
+	refuse_game:
+	mov game_invited, 0
+	jmp ReceivedInvitation_Continue3
+	
+	refuse_chat:
+	mov chat_invited, 0
+	
+	ReceivedInvitation_Continue3:
 	call ModuleSend
-
-	mov invited, 0
+	
 	ClearScreen
+	mov invitation_type, 0
 	
 	ReceivedInvitation_END:
 	RET
@@ -695,17 +726,20 @@ Intialize_Port Endp
             ret
         writeMyScreen ENDP
 ;----------------------------   
-		PrintP2	Proc
-		
+		PrintOpponent	Proc
 			push ax
+			push bx
 			
-			mov al, 'P'
-			PrintCharAl ChatRow,ChatCol,ChatAtt
+			mov bx,0	;In case taking the name from the user, intial value of bx will be 2
+			PrintOpponent_Loop:
+			
+			mov al, OpponentName[bx]
+			PrintCharAl ChatRow, ChatCol, ChatAtt
 			ShiftCursorChat
 			
-			mov al, '2'
-			PrintCharAl ChatRow,ChatCol,ChatAtt
-			ShiftCursorChat
+			inc bx
+			cmp OpponentName[bx], '$'
+			jnz PrintOpponent_Loop
 			
 			mov al, ':'
 			PrintCharAl ChatRow,ChatCol,ChatAtt
@@ -715,9 +749,10 @@ Intialize_Port Endp
 			PrintCharAl ChatRow,ChatCol,ChatAtt
 			ShiftCursorChat
 			
+			pop bx
 			pop ax
 			RET
-		PrintP2 ENDP
+		PrintOpponent ENDP
 ;----------------------------   
 		PrintMe	Proc
 		
@@ -761,7 +796,7 @@ Intialize_Port Endp
 			call PrintMe
 			jmp continue_writeChatScreen
 			Print_P2:
-			call PrintP2
+			call PrintOpponent
 			
 			continue_writeChatScreen:
            ;;;;; CHECK ENTER ;;;;; 
@@ -814,5 +849,98 @@ Intialize_Port Endp
            ret 
          Exit ENDP 
 
-         
+StartGame PROC
+ClearScreen
+
+mov ah, 2
+mov dl, 'G'
+int 21h
+
+mov ah, 2
+mov dl, 'A'
+int 21h
+
+mov ah, 2
+mov dl, 'M'
+int 21h
+
+mov ah, 2
+mov dl, 'E'
+int 21h
+
+Call Exit
+
+RET
+StartGame ENDP 
+
+StartChat PROC
+ClearScreen
+
+call ColorScreen
+
+	 mov MyRow,intialMyRow
+	 mov ChatRow,intialChatRow
+	 
+	 SetCursor MyRow, MyCol
+	 PrintHorizontalLine intialMyRow, MyAtt ;Draws a line on the row defined in al
+	  
+
+Again:     
+	  
+	  get:
+	   mov  dx, 3FDH            
+	   in   al,dx
+	   test al,1
+	   JZ send
+	   
+	   
+	   mov dx, 03f8h
+	   in  al,dx 
+	   mov GetChar,al
+	   mov write_status, 0
+	   call writeChatScreen          
+	  
+	  send:
+	   mov ah,01h
+	   int 16h
+	   JZ get
+	   
+	   mov ah,00
+	   int 16h
+	   
+	   mov ToSendChar, al
+	   mov write_status, 1
+	   cmp ah,1
+	   jnz noEsc
+		 
+	   call Exit
+	   noEsc:
+
+	   cmp al,0Dh
+	   jnz noEnter
+		   
+		   cmp BufferSize,0
+		   jz  Again  
+		   
+		   call SendOperation
+		   mov MyRow, intialMyRow
+		   mov MyCol, 0
+		   call clearMyPart  
+		   
+		   jmp Again
+	   noEnter:
+	   
+	   cmp BufferSize, 78
+	   jz Again
+	   
+	   call writeMyScreen  
+	  
+	 Jmp Again 
+	 
+	 
+	 END_Program:
+
+RET
+StartChat ENDP
+
 END MAIN
