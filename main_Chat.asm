@@ -188,8 +188,9 @@ ENDM AddSentToBuffer
     intialMyRow       	equ 7				;not zero (bec of instrcution)
     intialChatRow     	equ 8				;25>intialChatRow>intialMyRow>0
     
-	MyName 				db  'Player 1','$'
-	OpponentName 		db  'Player 2','$'
+	MyName 				db 16, ?,  17 dup('$')
+	OpponentName 		db 16, ?,  17 dup('$')
+	ask_MyName			db	'Your Name: ','$'
 	
 	write_status		db	?	;if 1=> I'm sending text, if 0=> I'm receiving text
 	
@@ -197,19 +198,19 @@ ENDM AddSentToBuffer
 											;***** Module Variables *****;							 
 											;****************************;
 								;*****************************************************;
-	chat_invited db 0	;if there is a pending invitation value will be 1, otherwise it's 0
-	game_invited db 0
-	chat_host db 0	;if Player 1 is the host it will be 1, if player 2 is the host it will be 2, otherwise it is 0
-	
-	game_host db 0	;if Player 1 is the host it will be 1, if player 2 is the host it will be 2, otherwise it is 0
-	
-	chat_invitation_key db 88h	;the key sent to the other player indicating a chat invitation
-	game_invitation_key db 99h
-	
-	accept_key db 11h		;the key if sent, the invitation is accepted
-	refuse_key db 00h		;the key if sent, the invitation is rejected/refused
+	chat_invited db 0	;if there is a pending chat invitation value will be 1, otherwise it's 0
+	game_invited db 0	;if there is a pending game invitation value will be 1, otherwise it's 0
 	
 	invitation_type  db 0	;it's 1 if a chat invitation, And 2 if a game invitation
+	
+	chat_host db 0	;if I'm the host it will be 1, if opponent is the host it will be 2, otherwise it is 0
+	game_host db 0	;if I'm the host it will be 1, if opponent is the host it will be 2, otherwise it is 0
+	
+	chat_invitation_key db 88h	;the key sent to the other player indicating a chat invitation
+	game_invitation_key db 99h	;the key sent to the other player indicating a game invitation
+	
+	accept_key db 11h		;the key if sent, the invitation (Game Or Chat) is accepted
+	refuse_key db 00h		;the key if sent, the invitation (Game Or Chat) is rejected/refused
 	
 	chat_invitation_msg db 'You have a pending chat invitation. Do you want to accept it? y or n$'
 	game_invitation_msg db 'You have a pending game invitation. Do you want to accept it? y or n$'
@@ -227,8 +228,29 @@ ENDM AddSentToBuffer
          ClearScreen 		 
          call Intialize_Port
 		 
+		 call GetName
+		 
 		 call InvitationModule	;Before starting the main program, we will handle the invitations first to be like a separate module from the program itself.
 		 
+		 ;If you are the host of either game or chat you will send first your name then receive the opponent's name, otherwise you will first receive the opponent's name then send your name
+		 cmp game_host, 1
+		 jnz check_chat_host
+		 Call SendName
+		 Call ReceiveName
+		 jmp main_continue
+		 
+		 check_chat_host:
+		 cmp chat_host, 1
+		 jnz NotHost
+		 Call SendName
+		 Call ReceiveName
+		 jmp main_continue
+		 
+		 NotHost:
+		 Call ReceiveName
+		 Call SendName
+		 
+		 main_continue:
 		 cmp game_host, 0
 		 jz start_chat
 		 ;Start Game
@@ -252,6 +274,87 @@ MAIN    ENDP
 ;**********************;
 ;**** Module Start ****;							 
 ;**********************;
+
+SendName PROC
+
+	push ax	
+	push bx
+	push cx
+	push dx
+	push ds
+
+	mov bx, 0
+	SendName_Loop:
+	push bx
+	;Check that Transmitter Holding Register is Empty
+	mov dx , 3FDH		; Line Status Register
+
+	In al , dx 			;Read Line Status
+	test al , 00100000b		;Checking Transmitter Holding Register bit 
+	pop bx
+
+	JZ SendName_Loop
+		push bx	
+	;Now the Transmitter Holding Register is Empty and ready to send a character
+
+	mov dx , 3F8H		; Transmit data register
+
+	mov al, MyName[bx]
+
+	out dx , al ;Send charachter in AL
+
+	pop bx
+	inc bx	
+	cmp al, '$'
+	jnz SendName_Loop
+
+	END_SendName:
+	pop ds
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
+	RET
+SendName ENDP
+
+ReceiveName Proc
+	push ax
+	push bx
+	push cx
+	push dx
+	push ds
+
+	mov bx, 0
+
+	ReceiveName_Loop:
+
+	push bx
+	;Check that Data Ready
+	mov dx , 3FDH		; Line Status Register
+	in al , dx 
+	test al , 1		;Checking Data Ready bit 
+
+	pop bx
+	JZ ReceiveName_Loop	;If not ready end
+	push bx
+	;If data ready, fetch the data
+	mov dx , 03F8H
+	in al , dx 
+	pop bx
+	mov OpponentName[bx], al
+	inc bx
+
+	cmp al, '$'
+	jnz ReceiveName_Loop
+
+	pop ds
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	RET
+ReceiveName ENDP
 
 InvitationModule Proc
 push ax
@@ -732,8 +835,12 @@ Intialize_Port Endp
 		PrintOpponent	Proc
 			push ax
 			push bx
+			push cx
 			
-			mov bx,0	;In case taking the name from the user, intial value of bx will be 2
+			mov bx,2	;In case taking the name from the user, intial value of bx will be 2
+			mov ch, 0
+			mov cl, OpponentName[1]
+			
 			PrintOpponent_Loop:
 			
 			mov al, OpponentName[bx]
@@ -741,8 +848,7 @@ Intialize_Port Endp
 			ShiftCursorChat
 			
 			inc bx
-			cmp OpponentName[bx], '$'
-			jnz PrintOpponent_Loop
+			loop PrintOpponent_Loop
 			
 			mov al, ':'
 			PrintCharAl ChatRow,ChatCol,ChatAtt
@@ -752,6 +858,7 @@ Intialize_Port Endp
 			PrintCharAl ChatRow,ChatCol,ChatAtt
 			ShiftCursorChat
 			
+			pop cx
 			pop bx
 			pop ax
 			RET
@@ -945,5 +1052,92 @@ Again:
 
 RET
 StartChat ENDP
+
+GetName    PROC  
+    push ax
+    push bx
+    push cx
+    push dx
+    push ds 
+    
+    mov ah, 0
+    mov al, 3
+    int 10h
+    
+    ClearScreen
+    
+	ask_MyName_loop:
+		;Clear the line
+		Call ClearLine
+		;Show the user a message to enter player 1 name
+		mov ah, 9
+		mov dx, offset ask_MyName
+		int 21h
+		
+		;Receive player 1 name from the user
+		mov ah, 0Ah
+		mov dx, offset MyName
+		int 21h
+		
+	cmp MyName[1], 0	;Check that input is not empty
+	jz ask_MyName_loop
+	
+	;Checks on the first letter to ensure that it's either a capital letter or a small letter
+	cmp MyName[2], 40h
+	jbe ask_MyName_loop
+	cmp MyName[2], 7Bh
+	jae ask_MyName_loop
+	cmp MyName[2], 5Bh
+	jae p1_check_in_range
+	
+	jmp END_GetName
+	
+	p1_check_in_range:
+	cmp MyName[2], 60h
+	jbe ask_MyName_loop
+	
+	END_GetName:
+      
+    pop ds
+    pop dx
+    pop cx
+    pop bx
+    pop ax  
+    
+    RET
+     
+GetName    ENDP
+
+ClearLine	Proc
+	
+	push ax
+	push cx
+	push dx
+	
+	;Go to the line beginning
+	
+	mov ah, 2
+	mov dl, 13
+	int 21h
+	;Draw 79 spaces
+	mov cx, 79
+	Clear_Line_loop:
+		mov ah, 2
+		mov dl, ' '
+		int 21h
+	loop Clear_Line_loop
+	
+	;Go to the line beginning
+	
+	mov ah, 2
+	mov dl, 13
+	int 21h
+	
+	pop dx
+	pop cx
+	pop ax
+	
+	RET
+ClearLine	ENDP
 
 END MAIN
