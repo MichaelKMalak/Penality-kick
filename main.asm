@@ -118,8 +118,8 @@ include macros.inc
     Buffer            	db 79 dup('$')
     BufferSize        	db 0
     
-    intialMyRow       	equ 7				;not zero (bec of instrcution)
-    intialChatRow     	equ 8				;25>intialChatRow>intialMyRow>0
+    intialMyRow       	equ 0				;not zero (bec of instrcution)
+    intialChatRow     	equ 1				;25>intialChatRow>intialMyRow>0
 	
 	intialInMyRow      	equ 18				;not zero (bec of instrcution)
     intialInChatRow    	equ 19				;25>intialChatRow>intialMyRow>0
