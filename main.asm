@@ -80,7 +80,7 @@ include macros.inc
  OpponentScore db 0  			;Intially player 2 score is 0
  GoalDim db 71, 3, 75, 11 	;X1,Y1, X2,Y2
  current_player db 1     
- game_level db 1			;level 1: Delay 40ms * 2 , level 2: Delay 40ms 
+ game_level db ?			;level 1: Delay 40ms * 2 , level 2: Delay 40ms 
  Hr_Line_Color db 0c0h
  Goal_Color db 0c0h
  Goalkeeper_Color db 20h
@@ -89,13 +89,16 @@ include macros.inc
  Coordinate_BallCurve dw  0205h , 6     
  
  temp dw ? 
- Shoot_Key  db  4Dh		 	;Right arrow scan code   
+ Shoot_Key  db  4dh		 	;Enter scan code   
  Total_Shoots db 1       	        ;inc until 10 (5 for each player)
  GameOver db 0     
  
  ver db ?         			;Last Vertical Ball Postion
  hor db 72        			;Last Horizontal Ball Postion
-
+ 
+ SendInstruction db ?
+ RecievedInstruction db ? 
+ 
 								;*****************************************************;
 								
 								
@@ -118,14 +121,10 @@ include macros.inc
     Buffer            	db 79 dup('$')
     BufferSize        	db 0
     
-    intialMyRow       	equ 0				;not zero (bec of instrcution)
-    intialChatRow     	equ 1				;25>intialChatRow>intialMyRow>0
-	
-	intialInMyRow      	equ 18				;not zero (bec of instrcution)
-    intialInChatRow    	equ 19				;25>intialChatRow>intialMyRow>0
-	
-	write_status		db	?	;if 1=> I'm sending text, if 0=> I'm receiving text 
-	
+    intialMyRow       	equ 7				;not zero (bec of instrcution)
+    intialChatRow     	equ 8				;25>intialChatRow>intialMyRow>0
+    
+	write_status		db	?	;if 1=> I'm sending text, if 0=> I'm receiving text
 								;*****************************************************;
 								
 											;****************************;
@@ -179,7 +178,7 @@ MAIN    PROC
 	
 	 ;If you are the host of either game or chat you will send first your name then receive the opponent's name, otherwise you will first receive the opponent's name then send your name
 	 cmp game_host, 1
-	 jnz check_chat_host
+	 JNE check_chat_host
 	 Call SendName
 	 Call ReceiveName
 	 Call ChooseLevel
@@ -188,7 +187,7 @@ MAIN    PROC
 	 
 	 check_chat_host:
 	 cmp chat_host, 1
-	 jnz NotHost
+	 JNE NotHost
 	 Call SendName
 	 Call ReceiveName
 	 jmp main_continue
@@ -199,11 +198,11 @@ MAIN    PROC
 	 
 	 main_continue:
 	 cmp game_host, 0
-	 jz start_chat
+	 JE start_chat
 	 ;Start Game
 	 cmp game_host, 1
-	 jz start_game
-	 
+	 JE start_game
+	 mov current_player, 2
 	 Call DrawInterface		;Freeze the screen on the game start after accepting the invitation
 	 Call DrawBottomSection	;Freeze the screen on the game start after accepting the invitation
 	 
@@ -211,11 +210,6 @@ MAIN    PROC
 	 
 	 start_game:
 	 Call StartGame
-	 
-	 ;Send the exit command to the other client
-	 ;mov ToSendChar, 27
-	 ;call SendOneChar
-	 
 	 Call GameOverMenu
 	 jmp Restart_Game
 	 
@@ -243,6 +237,8 @@ Move PROC
 	push dx
 	push ds
 	
+	cmp current_player, 1
+	JE ENDD
    RightU:
     CMP Ah,48h
     JNE RightD    						; If the up arrow is not pressed jump to RightD
@@ -251,7 +247,7 @@ Move PROC
     CMP Ah,50h			
     JNE ENDD            				; If the down arrow is not pressed jump to ENDD
     CALL RightDown						; If pressed, Call RightDown
-   
+    
    ENDD:
 	pop ds
 	pop dx
@@ -315,7 +311,7 @@ GetName    PROC
 		int 21h
 		
 	cmp MyName[1], 0	;Check that input is not empty
-	jz ask_MyName_loop
+	JE ask_MyName_loop
 	
 	;Checks on the first letter to ensure that it's either a capital letter or a small letter
 	cmp MyName[2], 40h
@@ -481,15 +477,6 @@ DrawBottomSection PROC
     
     PrintHorizontalLine 17, Hr_Line_Color
     
-	
-
-	 mov MyRow,intialInMyRow
-	 mov ChatRow,intialInChatRow
-	 
-	 PrintHorizontalLine intialInMyRow, MyAtt ;Draws a line on the row defined in al
-	
-	call ColorScreen
-	
     pop ds
     pop dx
     pop cx
@@ -601,7 +588,7 @@ PrintScores	ENDP
 
 Delay  PROC
 	cmp game_level, 2
-	jz level2
+	JE level2
 	
     Call Delay40ms
 	level2:
@@ -643,6 +630,9 @@ DrawBall PROC
 	push cx
 	push dx
 	
+	cmp current_player, 1
+	JNE DrawBall_End
+	
 	mov bh, 0
 	mov dx, 0
 	mov al, 'o'
@@ -651,6 +641,8 @@ DrawBall PROC
 	mov cx, 1
 	int 10h
 	
+	
+	DrawBall_End:
 	pop dx
 	pop cx
 	pop bx
@@ -658,6 +650,29 @@ DrawBall PROC
 
 	RET
 DrawBall ENDP
+;==================================================
+DrawShootingBall PROC
+
+	push ax
+	push bx
+	push cx
+	push dx
+	
+	mov bh, 0
+	mov dx, 0
+	mov al, 'o'
+	mov bl, Ball_Color
+	mov ah, 9
+	mov cx, 1
+	int 10h
+
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
+	RET
+DrawShootingBall ENDP
 ;==================================================
 
 Write_P1_P2 PROC
@@ -681,7 +696,13 @@ Write_P1_P2 PROC
     int 10h
     
     ;Write P1 or P2 under the + sign
-    mov al, 0
+    
+                            
+    cmp current_player, 1  ;Check if the current player is player1
+    je write_1
+    
+    ;if player 2 => Print P2
+	mov al, 0
     mov ah, 2
     mov dl, 5 ;Move to position X=5
     mov dh, 8 ;Move to position Y=8
@@ -694,11 +715,7 @@ Write_P1_P2 PROC
     mov ah, 9
     mov cx, 1
     int 10h
-                            
-    cmp current_player, 1  ;Check if the current player is player1
-    je write_1
-    
-    ;if player 2 => Print 2
+	
 	mov al, 0
     mov ah, 2
     mov dl, 6 ;Move to position X=6
@@ -716,7 +733,20 @@ Write_P1_P2 PROC
     jmp Exit_Write_P1_P2
     
     write_1:
-	;if player 1 => Print 1
+	;if player 1 => Print ME
+	mov al, 0
+    mov ah, 2
+    mov dl, 5 ;Move to position X=5
+    mov dh, 8 ;Move to position Y=8
+    int 10h 
+    
+    mov bh, 0
+    mov dx, 0
+	mov al, 'M'
+	mov bl, Player_Color
+    mov ah, 9
+    mov cx, 1
+    int 10h
 	mov al, 0
     mov ah, 2
     mov dl, 6 ;Move to position X=6
@@ -725,7 +755,7 @@ Write_P1_P2 PROC
 	
     mov bh, 0
     mov dx, 0
-	mov al, '1'
+	mov al, 'E'
 	mov bl, Player_Color
     mov ah, 9
     mov cx, 1
@@ -1045,10 +1075,11 @@ ResetAll Proc
 	CLD
 	
 	mov bx,offset FinalString
-	mov si, 2
+	mov si, offset OpponentName[2]
+	
 	ClearString:     
 	mov [bx],dl
-	mov OpponentName[si],dl
+	mov [si],dl
 	inc bx
 	inc si
 	loop ClearString
@@ -1057,29 +1088,14 @@ ResetAll Proc
 	mov game_host, 0
 	mov chat_host, 0
 	mov game_level, 0
-	mov write_status, 1
+	mov write_status, 0
 	mov invitation_type, 0
 	mov game_invited, 0
 	mov chat_invited, 0
 	
 	mov MyCol, 0
 	mov MyRow, 0
-	mov ToSendChar, 0
-	mov GetChar, 0
-	mov BufferSize, 0
-	
-	mov cx, 79
-	mov bx, 0
-	empty_buffer_loop:
-	mov Buffer[bx], '$'
-	inc bx
-	loop empty_buffer_loop
-	
-	FlushKeyboardBuffer
-	mov ax, 0
-	mov cx, 0
-	mov dx, 0
-	mov bx, 0
+	mov current_player, 1
 	
 	RET
 ResetAll ENDP
@@ -1098,6 +1114,7 @@ StartGame PROC
 	mov cx, 0
 	mov dx, 0
 	ClearScreen
+	Call Intialize_Port
 	CALL DrawInterface   	;Draws the intial game interface
     CALL DrawBottomSection	;Draws the in-game chat
     
@@ -1109,13 +1126,15 @@ StartGame PROC
     mov ah,1
     mov cx,2b0bh
     int 10h 
+    
 
- CHECK:
+ CHECK: 
+ 
     call Delay				
     call Delay 
     Call Write_P1_P2		;Draw + sign and p1 or p2 based on the current_player byte
-	
-	   
+ 
+    
     mov ah, 2h                  ;Setting the Status Bar
     mov bh, 0      
     mov dl, 0 
@@ -1159,8 +1178,8 @@ StartGame PROC
           mov dx, offset Turn2
           int 21h
 		  
-          jmp Cont  
-    
+          jmp Cont 
+          
     Cont:
         ;Get Curve co
         mov bl,0 
@@ -1169,8 +1188,10 @@ StartGame PROC
         
         
     FirstHalfCycle:  
-       call InGameChat_Receive
-               
+       call ReceiveCommand
+       cmp RecievedInstruction , 4dh
+       JE Shoot1
+                      
        mov ah,2
        mov dx, Coordinate_BallCurve[0]
        add dl,bl                ;inc X Coordinate --> right  
@@ -1180,10 +1201,14 @@ StartGame PROC
        
        ;Draw 'o'
        Call DrawBall 
-      
+       call Delay
+       
+       Call ReceiveCommand
+       cmp RecievedInstruction , 4dh
+       JE Shoot1
+       
        Call Delay
-       call InGameChat_Receive
-	   
+       
        mov si,dx   ;keep the position of the ball in SI in case a player shoots it 
        ;To clear the last 'o'       
        mov ah,2
@@ -1194,42 +1219,58 @@ StartGame PROC
        mov dl,' '
        int 21h  
        
-       inc bl
+       inc bl  				
+       Call ReceiveCommand
+       cmp RecievedInstruction , 4dh
+       JE Shoot1
          
        MOV AH,1             	  ;Get key pressed
        INT 16H  		  ;ZF=1-->NO KEY ,,, ZF=0-->KEY AVAILABLE
-   
+    
+       
        JNE Key_Pressed1
        JMP NO_Key_Pressed1       
                      
-    Key_Pressed1:   
-       MOV AH,0             	  ;clear used scan code from buffer
-       INT 16H  
-		Call InGameChat_Send
-		
-       cmp ah,Shoot_Key   
-       JE Shoot     
-       cmp ah,1H                  ;Esc to terminate the Game
-       JE Exit_1
-        
-		
-       Call Move 
-         
-      
+    Key_Pressed1: 
        
-    NO_Key_Pressed1:    
-                          
+       MOV AH,0             	  ;clear used scan code from buffer
+       INT 16H 
+       
+       mov SendInstruction , ah 
+       Call SendCommand   
+            
+       cmp current_player, 1
+	   JNE Continuechecking1
+	   
+       cmp ah,Shoot_Key   
+       JE shoot1   
+	   
+        Continuechecking1:   
+       cmp ah,1H                  ;Esc to terminate the Game
+       JE Exitting
+         
+       Call Move
+       ;call MoveRecieved 
+       
+       
+    NO_Key_Pressed1: 
+           
     loop FirstHalfCycle
-
-  
+ 
+      
        mov bl,1
        mov cx,Coordinate_BallCurve[2] ; radius 
        dec cx 
        mov temp,si               
+    jmp SecondHalfCycle
+	
+	shoot1:
+	jmp shoot
     
-    SecondHalfCycle:  
-		call InGameChat_Receive
-		
+	SecondHalfCycle:   
+	call ReceiveCommand
+	cmp RecievedInstruction , 4dh
+    JE shoot
        mov ah,2
        mov dx, temp
        sub dl,bl       			;dec X Coordinate -->left
@@ -1239,10 +1280,14 @@ StartGame PROC
        
        ;Draw 'o'
        Call DrawBall 
+       call Delay 
+        
+       call ReceiveCommand 
+       cmp RecievedInstruction , 4dh
+       JE Shoot
        
        Call Delay
-       call InGameChat_Receive
-	   
+       
        mov si,dx
        
        ;To clear the last 'o'       
@@ -1255,66 +1300,82 @@ StartGame PROC
         mov dl,' '
         int 21h  
             
-        inc bl     
+        inc bl 
+        				
+       call ReceiveCommand 
+       cmp RecievedInstruction , 4dh
+       JE Shoot    
         
         MOV AH,1              		;Get key pressed
         INT 16H  			;ZF=1-->NO KEY ,,, ZF=0-->KEY AVAILABLE
         
         JNE Key_Pressed2
         JMP NO_Key_Pressed2               
+
+Exitting:
+jmp Exit_1
    
-    Key_Pressed2:   
-        MOV AH,0             		;clear used scan code from buffer
-        INT 16H  
-		Call InGameChat_Send
-        cmp ah,Shoot_Key   
-        JE Shoot 
-	 jmp Continuechecking
-        CHECK_1:
-        JMP CHECK       
+    Key_Pressed2:       
+       MOV AH,0             	  ;clear used scan code from buffer
+       INT 16H   
        
-       Continuechecking:
-        cmp ah,1H                  	;Esc to terminate the Game
-        JE Exit2
-	
-        Call Move 
+       mov SendInstruction , ah 
+       Call SendCommand 
           
-             
-    NO_Key_Pressed2:    
+       
+	   cmp current_player, 1
+	   JNE Continuechecking2
+	   
+       cmp ah,Shoot_Key   
+       JE shoot1
+        
+     Continuechecking2:
+        cmp ah,1H                  	;Esc to terminate the Game
+        JE Exit_1
+		
+        Call Move
+        ;call MoveRecieved 
+       
+    NO_Key_Pressed2:  
                      
     loop SecondHalfCycle
                    
-CMP ah,Shoot_Key 
-
-JNE CHECK_1   
+JMP CHECK_1   
 
 Exit_1:
-JMP Exit2
-
+JMP Exit2 
+                   
+         
+ CHECK_1:
+ JMP CHECK          
+    
 ;si contains co-ordinate of start of shooting line
 
-Shoot:    
-		call InGameChat_Receive
+Shoot:      
 		
         mov cx,12 ;Horizontal shoot  
         mov bl,1   
         mov temp,si
     Horizontal:  
-           
+           call ReceiveCommand
         MOV AH,1              ;Get key pressed
         INT 16H  
        
         JNE Key_Pressed3
         JMP NO_Key_Pressed3               
        
-    Key_Pressed3:   
-        MOV AH,0          	 ;clear used scan code from buffer
-        INT 16H      
+    Key_Pressed3:           
+       MOV AH,0             	  ;clear used scan code from buffer
+       INT 16H     
+       
+       mov SendInstruction , ah 
+       Call SendCommand 
+       
+      
+       Call Move
+       ;call MoveRecieved 
+       
         
-       Call InGameChat_Send
-        Call Move 
-              
-            
     NO_Key_Pressed3:
         mov ah,2
         mov dx,temp
@@ -1322,11 +1383,11 @@ Shoot:
         int 10h   
         
         ;Draw
-        Call DrawBall
+        Call DrawShootingBall
         
         Call Delay
-        call InGameChat_Receive
         
+         
         mov si,dx    
         ;To clear the last 'o'       
         mov ah,2
@@ -1346,121 +1407,26 @@ Shoot:
          
 	cmp dl,68                             ;X is Greater than or Equal the Goal Line
 	JAE GoToCheckScores  		      ;It Reached the Line
-		
+    
+    mov RecievedInstruction , 0
     Loop Horizontal         
 	
-    GoToCheckScores:
+    GoToCheckScores: 
 	Call CheckScores
 	cmp GameOver, 0
     JE CHECK_1 
 	    
-	Exit2: 
+	Exit2:
+	
+  
 	pop ds
 	pop dx
 	pop cx
 	pop bx
 	pop ax
 	RET
-StartGame ENDP   
-   
- InGameChat_Receive proc
-	pushf 
-	push ax
-	push bx
-	push cx
-	push dx
-	push ds
-	
-	mov ax, 0
-	mov bx, 0
-	mov cx, 0
-	mov dx, 0
-	
-	SetCursor MyRow, MyCol
-	 
-	 
-	 mov  dx, 3FDH            
-	   in   al,dx
-	   test al,1
-	   jz End_InGameChat_Receive
-	   jmp InGameChat_Again
-	   
-		InGameChat_Wait_Until_Ready:
-	   mov  dx, 3FDH            
-	   in   al,dx
-	   test al,1
-	   JZ InGameChat_Wait_Until_Ready
-	   
-	 InGameChat_Again:  
-	   mov dx, 03f8h
-	   in  al,dx 
-	   mov GetChar,al
-	   
-	   mov write_status, 0
-	   call writeChatScreen
-		cmp GetChar,13
-	  jnz InGameChat_Wait_Until_Ready
-	  	   
-	  
-End_InGameChat_Receive:
-	   
-	pop ds
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	popf
-	ret                
-InGameChat_Receive ENDP   
- 
-InGameChat_Send proc
-	pushf 
-	push ax
-	push bx
-	push cx
-	push dx
-	push ds
-	push ax
-	
-	SetCursor MyRow, MyCol
-	 
-	 pop ax
-	  cmp al,0
-	  JZ End_InGameChat_Send
-	   
-	   mov ToSendChar, al
-	   mov write_status, 1
-	  
-	   cmp al,0Dh
-	   jnz InGameChat_noEnter
-		   
-		   cmp BufferSize,0
-		   jz  End_InGameChat_Send  
-		   
-		   call SendOperation
-		   mov MyRow, intialInMyRow
-		   mov MyCol, 0
-		   call clearInMyPart  
-		   
-		   jmp End_InGameChat_Send
-	   InGameChat_noEnter:
-	   
-	   cmp BufferSize, 78
-	   jz End_InGameChat_Send
-	   
-	   call writeMyScreen  
-	   
-	  
-End_InGameChat_Send:
-	   
-	pop ds
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	popf
-	ret                
-InGameChat_Send ENDP 
+StartGame ENDP
+
 ;*********************************************************************************************************************************************;
 
 												 ;**************************;
@@ -1488,7 +1454,7 @@ SendName PROC
 	test al , 00100000b		;Checking Transmitter Holding Register bit 
 	pop bx
 
-	JZ SendName_Loop
+	JE SendName_Loop
 		push bx	
 	;Now the Transmitter Holding Register is Empty and ready to send a character
 
@@ -1501,7 +1467,7 @@ SendName PROC
 	pop bx
 	inc bx	
 	cmp al, '$'
-	jnz SendName_Loop
+	JNE SendName_Loop
 
 	END_SendName:
 	pop ds
@@ -1531,7 +1497,7 @@ ReceiveName Proc
 	test al , 1		;Checking Data Ready bit 
 
 	pop bx
-	JZ ReceiveName_Loop	;If not ready end
+	JE ReceiveName_Loop	;If not ready end
 	push bx
 	;If data ready, fetch the data
 	mov dx , 03F8H
@@ -1541,7 +1507,7 @@ ReceiveName Proc
 	inc bx
 
 	cmp al, '$'
-	jnz ReceiveName_Loop
+	JNE ReceiveName_Loop
 
 	pop ds
 	pop dx
@@ -1566,7 +1532,7 @@ SendLevel PROC
 	In al , dx 			;Read Line Status
 	test al , 00100000b		;Checking Transmitter Holding Register bit 
 
-	JZ SendLevel_Loop
+	JE SendLevel_Loop
 			
 	;Now the Transmitter Holding Register is Empty and ready to send a character
 
@@ -1599,7 +1565,7 @@ ReceiveLevel Proc
 	in al , dx 
 	test al , 1		;Checking Data Ready bit 
 
-	JZ ReceiveLevel_Loop	;If not ready end
+	JE ReceiveLevel_Loop	;If not ready end
 	
 	;If data ready, fetch the data
 	mov dx , 03F8H
@@ -1637,28 +1603,28 @@ ClearScreen
 			call ModuleReceive
 			
 			cmp chat_host, 0
-			jnz END_InvitationModule
+			JNE END_InvitationModule
 			
             cmp game_host, 0
-			jnz END_InvitationModule
+			JNE END_InvitationModule
 			
 			mov ah, 1
             int 16h
-			jz Module_Check
+			JE Module_Check
 		
 		mov ah, 0
 		int 16h  
 		cmp al, 27		;ESCAPE
-		jz ModuleEnd_Program
+		JE ModuleEnd_Program
 		
 		cmp ah, 3Ch		;F2
-		jnz Module_Check_F3
+		JNE Module_Check_F3
 		
 		;Chat Invitation
 		cmp chat_host, 0
-		jnz Module_Loop
+		JNE Module_Loop
 		cmp chat_invited, 1
-		jz Module_Loop
+		JE Module_Loop
 		mov al, chat_invitation_key
 		mov invitation_type, 1
 		call ModuleSend
@@ -1666,7 +1632,7 @@ ClearScreen
 		
 		Module_Check_F3:
 		cmp ah, 3Dh
-		jnz Module_Loop
+		JNE Module_Loop
 		mov al, game_invitation_key
 		mov invitation_type, 2
 		call ModuleSend
@@ -1696,7 +1662,7 @@ ModuleSend Proc
 	mov dx , 3FDH		; Line Status Register
 	ModuleSend_Loop: 	In al , dx 			;Read Line Status
 		test al , 00100000b		;Checking Transmitter Holding Register bit 
-	JZ ModuleSend_Loop
+	JE ModuleSend_Loop
 			
 	;Now the Transmitter Holding Register is Empty and ready to send a character
 	
@@ -1714,20 +1680,20 @@ ModuleReceive Proc
 	in al , dx 
   	test al , 1		;Checking Data Ready bit 
   	
-	JZ END_ReceiveModule1	;If not ready end
+	JE END_ReceiveModule1	;If not ready end
 
 	;If data ready, fetch the data
   		mov dx , 03F8H
   		in al , dx 
 		
 	cmp chat_host, 0
-	jnz END_ReceiveModule1
+	JNE END_ReceiveModule1
 	
 	cmp game_host, 0
-	jnz END_ReceiveModule1
+	JNE END_ReceiveModule1
 	
 	cmp al, chat_invitation_key
-	jnz Receive_Continue1
+	JNE Receive_Continue1
 	;Chat Invitation Received
 	
 		mov chat_invited, 1
@@ -1736,7 +1702,7 @@ ModuleReceive Proc
 	
 	Receive_Continue1:
 	cmp al, game_invitation_key
-	jnz Receive_Continue2
+	JNE Receive_Continue2
 	;Game Invitation Received
 	
 		mov game_invited, 1
@@ -1746,11 +1712,11 @@ ModuleReceive Proc
 	
 	Receive_Continue2:
 	cmp al, accept_key
-	jnz Receive_Continue3
+	JNE Receive_Continue3
 	;Invitation Accepted
 		
 		cmp invitation_type, 1
-		jnz check_game_invitation
+		JNE check_game_invitation
 		;Chat Invitation
 		
 		mov chat_host, 1
@@ -1759,7 +1725,7 @@ ModuleReceive Proc
 		
 		check_game_invitation:
 		cmp invitation_type, 2
-		jnz END_ReceiveModule2
+		JNE END_ReceiveModule2
 		;Game Invitation
 		
 		mov game_host, 1
@@ -1769,9 +1735,9 @@ ModuleReceive Proc
 	jmp END_ReceiveModule2
 	Receive_Continue3:
 	cmp chat_invited, 0
-	jnz END_ReceiveModule2
+	JNE END_ReceiveModule2
 	cmp al, refuse_key
-	jnz END_ReceiveModule2
+	JNE END_ReceiveModule2
 	;Invitation Refused
 	
 		mov chat_host, 0
@@ -1786,7 +1752,7 @@ ReceivedInvitation	PROC
 	ClearScreen
 	
 	cmp game_invited, 1
-	jz Game_Invitation_Received
+	JE Game_Invitation_Received
 	
 	Chat_Invitation_Received:
 	PrintStr chat_invitation_msg
@@ -1804,12 +1770,12 @@ ReceivedInvitation	PROC
 	
 	ReceivedInvitation_Check_Y:
 	cmp al, 'y'
-	jnz ReceivedInvitation_Check_N
+	JNE ReceivedInvitation_Check_N
 	;Accept Invitation
 	
 	mov al, accept_key
 	cmp game_invited, 1
-	jnz accept_chat
+	JNE accept_chat
 	
 	accept_game:
 	mov game_host, 2
@@ -1824,12 +1790,12 @@ ReceivedInvitation	PROC
 	jmp ReceivedInvitation_END
 	ReceivedInvitation_Check_N:
 	cmp al, 'n'
-	jnz ReceivedInvitation_Again
+	JNE ReceivedInvitation_Again
 	;Refuse Invitation
 	
 	mov al, refuse_key
 	cmp game_invited, 1
-	jnz refuse_chat
+	JNE refuse_chat
 	
 	refuse_game:
 	mov game_invited, 0
@@ -1882,7 +1848,7 @@ Intialize_Port Proc
 	;Port configuration
 	
 	mov dx,3fbh
-	mov al,00000011b
+	mov al,00011011b
 	;(0xxxxxxx):Access to Receiver buffer, Transmitter buffer
 	;(x0xxxxxx):Set Break disabled
 	;(xx000xxx):No Parity
@@ -1899,38 +1865,29 @@ Intialize_Port Proc
 Intialize_Port Endp 
 
 ;----------------------------
-  ColorScreen PROC 
-	   push ax
-	   push bx
-	   push cx
-	   push dx
-	   push ds
-	   
-	   mov ah,7h        ;Scroll down
-	   mov al, 25  	
-	   mov bh,ChatAtt   ;blank lines at bottom of window (Chat Section Color)
-	   cmp chat_host, 0
-	   jz Color_InGame
-	   mov ch,intialChatRow        ;row - window's upper left corner
-	    sub al, intialChatRow	;number of lines to scroll 
-	   jmp color_continue
-	   Color_InGame:
-	   mov ch,intialInChatRow        ;row - window's upper left corner
-	    sub al, intialInChatRow	;number of lines to scroll 
-	   color_continue:
-	   mov cl,0         ;column - window's upper left corner
-	   mov dh,25        ;row - window's lower right corner
-	   mov dl,79        ;column - window's lower right corner
-	   int 10h
-	   
-	   pop ds
-	   pop dx
-	   pop cx
-	   pop bx
-	   pop ax
-		
-		ret
-	ColorScreen ENDP   
+      ColorScreen PROC 
+           push ax
+           push bx
+           push cx
+           push dx
+           
+           mov ah,7h        ;Scroll down
+           mov al, 25
+		   sub al, intialChatRow	;number of lines to scroll   	
+           mov bh,ChatAtt   ;blank lines at bottom of window (Chat Section Color)
+           mov ch,intialChatRow        ;row - window's upper left corner
+           mov cl,0         ;column - window's upper left corner
+           mov dh,25        ;row - window's lower right corner
+           mov dl,79        ;column - window's lower right corner
+           int 10h
+           
+           pop dx
+           pop cx
+           pop bx
+           pop ax
+            
+            ret
+        ColorScreen ENDP   
 ;----------------------------        
         ScrollChatScreen PROC 
            push ax
@@ -1941,13 +1898,7 @@ Intialize_Port Endp
            mov ah,6h                ;Scroll up
            mov al,1                 ;number of lines to scroll
            mov bh,ChatAtt           ;blanck lines at bottom of window
-		   cmp chat_host, 0
-		   jz Scroll_InGame
            mov ch,intialChatRow     ;row - window's upper left corner
-		   jmp scroll_continue
-		   Scroll_InGame:
-		   mov ch,intialInChatRow     ;row - window's upper left corner
-		   scroll_continue:
            mov cl,0                 ;column - window's upper left corner
            mov dh,25                ;row - window's lower right corner
            mov dl,79                ;column - window's lower right corner
@@ -1984,14 +1935,10 @@ Intialize_Port Endp
            
            call  SendOneChar
            call  writeChatScreen
-		   
-		   cmp chat_host,0
-		   jnz Continue_Without_Delay
-		   Call Delay
-            Continue_Without_Delay:
+            
            inc bx    
            dec cl
-           jnz loopBuffer 
+           JNE loopBuffer 
            
            ;resets size of buffer
            mov bl,00h
@@ -2026,7 +1973,7 @@ Intialize_Port Endp
            mov dx,3fdh
            in al,dx
            test al,00100000b
-           JZ WaitTillReady
+           JE WaitTillReady
            
            mov dx, 3f8h
            mov al, ToSendChar
@@ -2057,14 +2004,14 @@ Intialize_Port Endp
             mov al, ToSendChar 
             cmp al,08h
             
-            jnz  writeMyScreen_Continue2
+            JNE  writeMyScreen_Continue2
                
                  push bx
                 cmp MyCol,0
-                jnz notbeg1
+                JNE notbeg1
                 
                   cmp MyRow, intialMyRow
-                  jnz notbeg1
+                  JNE notbeg1
                   jmp endbck1
                   
                 notbeg1:
@@ -2093,7 +2040,7 @@ Intialize_Port Endp
             ;;;;; 
              
              cmp BufferSize, 77
-			 jz writeMyScreen_End
+			 JE writeMyScreen_End
 			 
              PrintCharAl MyRow,MyCol,myAtt
              ShiftCursorMy   
@@ -2176,10 +2123,10 @@ Intialize_Port Endp
              
             SetCursor ChatRow,ChatCol
 			cmp ChatCol, 0
-			jnz continue_writeChatScreen
+			JNE continue_writeChatScreen
 			
 			cmp write_status, 1
-			jnz Print_P2
+			JNE Print_P2
 			call PrintMe
 			jmp continue_writeChatScreen
 			Print_P2:
@@ -2191,11 +2138,11 @@ Intialize_Port Endp
             mov al, GetChar 
             cmp al,0Dh
             
-            jnz  writeChatScreen_Continue1
+            JNE  writeChatScreen_Continue1
                
                 WriteEnter ChatRow, ChatCol
                 cmp ChatRow, 25
-                jnz writeChatScreen_End
+                JNE writeChatScreen_End
                 call ScrollChatScreen
                 dec ChatRow
                      
@@ -2224,24 +2171,10 @@ Intialize_Port Endp
 		Print intialMyRow, cl, MyAtt, ' '
 		inc cl
 		cmp cl, 79		
-		jnz loop3 
+		JNE loop3 
         SetCursor MyRow,MyCol
 		ret
  clearMyPart ENDP 
-
-;---------------------------- 
- clearInMyPart PROC
- 
-        SetCursor MyRow,MyCol 
-        xor cx, cx
-		In_loop3:
-		Print intialInMyRow, cl, MyAtt, ' '
-		inc cl
-		cmp cl, 79		
-		jnz In_loop3 
-        SetCursor MyRow,MyCol
-		ret
- clearInMyPart ENDP 
 
 ;----------------------------  
 
@@ -2257,10 +2190,7 @@ Exit ENDP
 ;----------------------------
 	
 StartChat PROC
-mov ax, 0
-mov bx, 0
-mov cx, 0
-mov dx, 0
+
 ClearScreen
 	
 call ColorScreen
@@ -2278,7 +2208,7 @@ Again:
 	   mov  dx, 3FDH            
 	   in   al,dx
 	   test al,1
-	   JZ send
+	   JE send
 	   
 	   
 	   mov dx, 03f8h
@@ -2286,29 +2216,27 @@ Again:
 	   mov GetChar,al
 	   mov write_status, 0
 	   call writeChatScreen          
-	  cmp GetChar, 27
-	  jz END_Program
+	  
 	  send:
 	   mov ah,01h
 	   int 16h
-	   JZ get
+	   JE get
 	   
 	   mov ah,00
 	   int 16h
-	  
-	   cmp al,27
-	   jz END_Program
 	   
-		 mov ToSendChar, al
+	   mov ToSendChar, al
 	   mov write_status, 1
-	   
+	   cmp ah,1
+	   JE END_Program
+		 
 	   noEsc:
 
 	   cmp al,0Dh
-	   jnz noEnter
+	   JNE noEnter
 		   
 		   cmp BufferSize,0
-		   jz  Again  
+		   JE  Again  
 		   
 		   call SendOperation
 		   mov MyRow, intialMyRow
@@ -2319,7 +2247,7 @@ Again:
 	   noEnter:
 	   
 	   cmp BufferSize, 78
-	   jz Again
+	   JE Again
 	   
 	   call writeMyScreen  
 	  
@@ -2327,8 +2255,6 @@ Again:
 	 
 	 
 	END_Program:
-	mov ToSendChar, 27
-	call SendOneChar
 	RET
 StartChat ENDP
 
@@ -2341,7 +2267,7 @@ ChooseLevel Proc
 	Level_Check: 
 		mov ah, 1
 		int 16h
-	jz Level_Check
+	JE Level_Check
 		
 	mov ah, 0
 	int 16h  
@@ -2352,19 +2278,152 @@ ChooseLevel Proc
 	
 	ChooseLevel_Check_1:	
 	cmp al, 31h
-	jnz ChooseLevel_Check_2
+	JNE ChooseLevel_Check_2
 	;Level 1
 	mov game_level, 1
 	jmp ChooseLevel_End
 	
 	ChooseLevel_Check_2:
 	cmp al, 32h
-	jnz Level_Check
+	JNE Level_Check
 	;Level 2
 	mov game_level, 2
 	
 	ChooseLevel_End:
 	RET
-ChooseLevel ENDP
+ChooseLevel ENDP 
+
+SendCommand Proc
+pushf
+push ax
+push bx
+push cx
+push dx
+push ds
+ 
+ ;Up -> 48
+ ;Down -> 50
+ ;Right -> 4d 
+ 
+ cmp SendInstruction ,0
+ JE SendCommand_End
+ 
+ 
+ ;If current player is 1, this means that he can only shoot
+ ;If current player is 2, this means that he can only move the goalkeeper
+ 
+ cmp current_player, 1
+ JE SendShoot
+ ;Send up and down arrows if pressed
+ cmp SendInstruction , 48h
+ JE str
+ cmp SendInstruction , 50h
+ JE str
+ jmp SendCommand_End 
+ 
+ 
+ SendShoot:
+ ;Send right arrow if pressed
+ cmp SendInstruction , 4dh
+ JE str
+ 
+jmp SendCommand_End 
+  
+ str:
+ 
+    mov al , SendInstruction 
+    ContIns:
+    mov dx,03FDH                 
+    in Al,Dx
+    AND al,00100000b             ;AND al,00100000b
+    JE ContIns
+    mov al , SendInstruction
+    mov dx,03F8H
+    out Dx,Al
+	mov SendInstruction, 0
+	
+	SendCommand_End:
+pop ds
+pop dx
+pop cx
+pop bx
+pop ax
+popf
+RET
+
+SendCommand ENDP
+
+ReceiveCommand PROC 
+	pushf
+    push ax
+	push bx
+	push cx
+	push dx  
+    
+ ;Up -> 48
+ ;Down -> 50
+ ;Right -> 4d 
+    
+	RecievingIns:
+	mov DX,03FDH                ;Recieving and Setting Data                          ;Check if there is a recieved Charactor
+    in al,dx
+    AND al,1                ;AND
+    JE EndIns 
+            
+    
+    Mov DX,03F8H
+    IN AL,DX   
+    
+    Mov RecievedInstruction, al 
+    
+	mov ah, 48h
+    cmp RecievedInstruction , ah
+    JE Moving
+    
+	mov ah, 50h
+    cmp RecievedInstruction, ah   
+    JE Moving  
+    
+    jmp EndIns
+
+    Moving: 
+    ;print RBCenterD,20,Goalkeeper_Color, ' '
+    call MoveRecieved  
+	
+	   
+    EndIns: 
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	popf
+	RET 
+    
+ReceiveCommand ENDP  
+
+MoveRecieved Proc 
+   push ax
+   push bx
+   push cx
+   push dx 
+	
+   RightUU:
+    CMP RecievedInstruction,48h
+    JNE RightDD    						; If the up arrow is not pressed jump to RightD
+    Call RightUp					; If pressed, Call RightUp Procedure
+   RightDD:    
+    CMP RecievedInstruction,50h			
+    JNE ENDDD            				; If the down arrow is not pressed jump to ENDD
+    CALL RightDown						; If pressed, Call RightDown
+
+   ENDDD:  
+  
+   pop dx
+   pop cx
+   pop bx
+   pop ax
+   
+   ret						
+MoveRecieved Endp 
 
 END MAIN    
