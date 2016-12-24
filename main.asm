@@ -491,7 +491,6 @@ DrawBottomSection PROC
     PrintHorizontalLine 17, Hr_Line_Color
     
 	
-
 	 mov MyRow,intialInMyRow
 	 mov ChatRow,intialInChatRow
 	 
@@ -1165,7 +1164,7 @@ ResetAll Proc
 	
 	RET
 ResetAll ENDP
-
+;----------------------------
 StartGame PROC
     
    
@@ -1176,7 +1175,7 @@ StartGame PROC
 	push ds
 	
 	mov ax, 0
-    mov bx, 0
+        mov bx, 0
 	mov cx, 0
 	mov dx, 0
 	ClearScreen
@@ -1193,8 +1192,8 @@ StartGame PROC
     int 10h 
 
  CHECK:
-    call Delay				
-    call Delay 
+    call Delay			;Only First Player (Shooter) Can Shoot	
+    call Delay 			;And Second Player (Keeper) Can Move
     Call Write_P1_P2		;Draw + sign and p1 or p2 based on the current_player byte
 	
 	   
@@ -1251,9 +1250,9 @@ StartGame PROC
         
         
     FirstHalfCycle:
-       call InGameChat_Receive
+       call InGameChat_Receive					;check for recieved charactor
        cmp RecievedInstruction , 4dh
-       JE Shoot0
+       JE Shoot0						;shoot if shootkey recieved
            
        mov ah,2
        mov dx, Coordinate_BallCurve[0]
@@ -1303,21 +1302,21 @@ StartGame PROC
     jmp Exitting
 	
     Key_Pressed1:   
-       MOV AH,0             	  ;clear used scan code from buffer
+       MOV AH,0             	  	;clear used scan code from buffer
        INT 16H 
        
-       mov SendInstruction , ah 
+       mov SendInstruction , ah 	;send the Command Recieved
        Call SendCommand 
        
 	    
-	    cmp current_player, 1
-	   JNE Continuechecking1
+	cmp current_player, 1		;Shoot only if it is Second PLayer
+	JNE Continuechecking1
 		
        cmp ah,Shoot_Key   
        JE Shoot1  
        
        Continuechecking1:   
-     	Call InGameChat_Send  
+     	Call InGameChat_Send  	  ;Send The Charactor Recieved
        cmp ah,1H                  ;Esc to terminate the Game
        JE Exitting 
 		
@@ -1326,7 +1325,6 @@ StartGame PROC
     NO_Key_Pressed1:    
                           
     loop FirstHalfCycle1
-
   
        mov bl,1
        mov cx,Coordinate_BallCurve[2] ; radius 
@@ -1339,11 +1337,12 @@ StartGame PROC
      
     SecondHalfCycle: 
     call InGameChat_Receive
-	cmp RecievedInstruction , 4dh
-    JE shoot1 
-		call InGameChat_Receive
-		cmp ExitGame, 1
-	   jz Exitting
+    cmp RecievedInstruction , 4dh
+    JE shoot1
+    
+	call InGameChat_Receive
+	cmp ExitGame, 1
+	 jz Exitting
 	   
        mov ah,2
        mov dx, temp
@@ -1391,8 +1390,8 @@ StartGame PROC
         Exitting:
         jmp Exit_1
                  
-		SecondHalfCycle1:
-		jmp SecondHalfCycle
+	SecondHalfCycle1:
+	jmp SecondHalfCycle
 		
     Key_Pressed2:   
         MOV AH,0             		;clear used scan code from buffer
@@ -1403,7 +1402,7 @@ StartGame PROC
           
 		
        cmp current_player, 1
-	   JNE Continuechecking2
+	JNE Continuechecking2
 	   
        cmp ah,Shoot_Key   
        JE shoot
@@ -1434,9 +1433,9 @@ JMP Exit2
 Shoot:    
         call delay
         call delay
-		call InGameChat_Receive
-		cmp ExitGame, 1
-	   jz Exit_1
+	call InGameChat_Receive
+	cmp ExitGame, 1
+	jz Exit_1
         mov cx,12 ;Horizontal shoot  
         mov bl,1   
         mov temp,si
@@ -1470,7 +1469,7 @@ Shoot:
         int 10h   
         
         ;Draw
-        Call DrawShootingBall
+        Call DrawShootingBall		;Shooting here appear for 2 players
         
         Call Delay
         call InGameChat_Receive
@@ -1496,7 +1495,7 @@ Shoot:
 	cmp dl,68                             ;X is Greater than or Equal the Goal Line
 	JAE GoToCheckScores  		      ;It Reached the Line
 	
-	mov RecievedInstruction , 0	
+	mov RecievedInstruction , 0		;Reset the RecievedInstruction
     Loop Horizontal         
 	
     GoToCheckScores:
@@ -1512,7 +1511,7 @@ Shoot:
 	pop ax
 	RET
 StartGame ENDP   
-   
+;----------------------------   
  InGameChat_Receive proc
 	pushf 
 	push ax
@@ -1573,7 +1572,7 @@ End_InGameChat_Receive:
 	popf
 	ret                
 InGameChat_Receive ENDP   
- 
+;---------------------------- 
 InGameChat_Send proc
 	pushf 
 	push ax
@@ -1688,7 +1687,7 @@ SendName PROC
 
 	RET
 SendName ENDP
-
+;----------------------------
 ReceiveName Proc
 	push ax
 	push bx
@@ -1726,7 +1725,7 @@ ReceiveName Proc
 	pop ax
 	RET
 ReceiveName ENDP
-
+;----------------------------
 SendLevel PROC
 
 	push ax	
@@ -1760,7 +1759,7 @@ SendLevel PROC
 
 	RET
 SendLevel ENDP
-
+;----------------------------
 ReceiveLevel Proc
 	push ax
 	push bx
@@ -1790,7 +1789,7 @@ ReceiveLevel Proc
 	pop ax
 	RET
 ReceiveLevel ENDP
-
+;----------------------------
 InvitationModule Proc
 push ax
 push bx
@@ -1863,7 +1862,7 @@ ClearScreen
 	pop ax
 	RET
 InvitationModule ENDP
-
+;----------------------------
 ModuleSend Proc
 
 	push ax	;To save the character in al to send
@@ -1883,7 +1882,7 @@ ModuleSend Proc
 		
 	END_ModuleSend:ret    
 ModuleSend Endp
-
+;----------------------------
 ModuleReceive Proc
      ;Check that Data Ready
 	mov dx , 3FDH		; Line Status Register
@@ -1957,7 +1956,7 @@ ModuleReceive Proc
 	END_ReceiveModule2:ret
 ModuleReceive Endp
 
-
+;----------------------------
 ReceivedInvitation	PROC
 	
 	;Draw Notifications Bar
@@ -2509,7 +2508,7 @@ Again:
 	call SendOneChar
 	RET
 StartChat ENDP
-
+;----------------------------
 ChooseLevel Proc
 
 	ClearScreen
@@ -2544,9 +2543,8 @@ ChooseLevel Proc
 	ChooseLevel_End:
 	RET
 ChooseLevel ENDP  
-
-
-SendCommand Proc
+;----------------------------
+SendCommand Proc				;sending Command from user to user
 pushf
 push ax
 push bx
@@ -2592,12 +2590,12 @@ jmp SendCommand_End
     AND al,00100000b             ;AND al,00100000b
     JE ContIns
     mov al , SendInstruction
-	add al, 50h		
+    add al, 50h		
     mov dx,03F8H
     out Dx,Al
-	mov SendInstruction, 0
+    mov SendInstruction, 0
 	
-	SendCommand_End:
+SendCommand_End:
 pop ds
 pop dx
 pop cx
@@ -2607,10 +2605,10 @@ popf
 RET
 
 SendCommand ENDP
-
-ReceiveCommand PROC 
+;----------------------------
+ReceiveCommand PROC 				;Check if there is recieved order or no and send it
 	pushf
-    push ax
+   	push ax
 	push bx
 	push cx
 	push dx  
@@ -2630,7 +2628,6 @@ ReceiveCommand PROC
     jmp EndIns
 
     Moving: 
-    ;print RBCenterD,20,Goalkeeper_Color, ' '
     call MoveRecieved  
 	
 	   
@@ -2643,8 +2640,8 @@ ReceiveCommand PROC
 	RET 
     
 ReceiveCommand ENDP  
-
-MoveRecieved Proc 
+;----------------------------
+MoveRecieved Proc 					;Called when there is move recieved
    push ax
    push bx
    push cx
@@ -2652,11 +2649,11 @@ MoveRecieved Proc
 	
    RightUU:
     CMP RecievedInstruction,48h
-    JNE RightDD    						; If the up arrow is not pressed jump to RightD
+    JNE RightDD    					; If the up arrow is not pressed jump to RightDD
     Call RightUp					; If pressed, Call RightUp Procedure
    RightDD:    
     CMP RecievedInstruction,50h			
-    JNE ENDDD            				; If the down arrow is not pressed jump to ENDD
+    JNE ENDDD            				; If the down arrow is not pressed jump to ENDDD
     CALL RightDown						; If pressed, Call RightDown
 
    ENDDD:  
