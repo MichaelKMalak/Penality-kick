@@ -12,7 +12,7 @@ The game is written in x86 assembly language for Microprocessors course.
 ### How to use?
 * Clone this repository.
 * Make sure to install DOS box.
-* Assemble Main.asm, Game.asm, and Chat.asm files from the DOS box using
+* Assemble main.asm from the DOS box using
 <br>`masm main.asm;`
 
 * Connect to anothor computer using serial cable or using virtual serial ports.
