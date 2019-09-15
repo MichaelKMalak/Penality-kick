@@ -1,4 +1,5 @@
 # Penality kick
+[![GitHub license](https://img.shields.io/github/license/MichaelKMalak/Penality-kick.svg)](https://github.com/MichaelKMalak/Penality-kick/blob/master/LICENSE)
 
 A simple 2-player game with chat capability. 
 
